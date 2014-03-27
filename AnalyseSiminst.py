@@ -73,6 +73,10 @@ def main(argv):
 	NumCacheLevels+=HybridMemory
 	InputLen=len(Input)
 	OutStream.write("\n\t Format: <Blk-ID> <Hits> <Misses> <Loads> <Stores> \n");
+	HitsID=2
+	MissID=3
+	LoadID=4
+	StoreID=5
 	for LineNum in range(InputLen):
 		CurrLine=Input[LineNum]
 		BlkLine=re.match('\s*BLK\s*\d+\s*0x(.*)\s*.*',CurrLine)
@@ -94,7 +98,8 @@ def main(argv):
 						if(len(CacheStats)<(SysIDIdx+6)):
 							print "\n\t Error: The CacheStat line is expected to have "+str(SysIDIdx+6)+" fields while the specified cache line only has "+str(len(CacheStats))+" number of fields "
 							sys.exit()
-						OutStream.write("\t "+str(BlockID[0])+"\t"+str(CacheStats[SysIDIdx+2])+"\t"+CacheStats[SysIDIdx+3]+"\t"+str(CacheStats[SysIDIdx+4])+"\t"+str(CacheStats[SysIDIdx+5]))
+						if( (1 * int(CacheStats[SysIDIdx+LoadID]) ) < ( int(CacheStats[SysIDIdx+StoreID]) ) ):
+							OutStream.write("\t "+str(BlockID[0])+"\t"+str(CacheStats[SysIDIdx+HitsID])+"\t"+CacheStats[SysIDIdx+MissID]+"\t"+str(CacheStats[SysIDIdx+LoadID])+"\t"+str(CacheStats[SysIDIdx+StoreID]))
 	
 	print "\n\t NumBlks: "+str(NumBlks)		
 
