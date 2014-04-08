@@ -2,7 +2,7 @@
 import sys,re,getopt
 
 def usage():
-	print "\n\t AnalyseSiminst.py -i <siminst-file> -s <systemID of cache> \n\t Optional inputs: -l <Number of cache levels:default=3> -hy <0: Standard memory 1: Hybrid memory> -o <Output-file> "
+	print "\n\t AnalyseSiminst.py -i <siminst-file> -s <systemID of cache> \n\t Optional inputs: -l <Number of cache levels:default=3> -H <0: Standard memory 1: Hybrid memory> -o <Output-file> "
 	sys.exit()
 def WhiteSpace(Input):
 	temp=re.sub('^\s*','',Input)
@@ -19,7 +19,7 @@ def main(argv):
         HybridMemory=''
         OutFileName=''
         try:
-           opts, args = getopt.getopt(sys.argv[1:],"i:s:l:y:o:h:v",["input","sysid","levels","hybrid","output","help","verbose"])
+           opts, args = getopt.getopt(sys.argv[1:],"i:s:l:H:o:h:v",["input","sysid","levels","hybrid","output","help","verbose"])
         except getopt.GetoptError:
                 #print str(err) # will print something like "option -a not recognized"
            usage()
@@ -40,7 +40,7 @@ def main(argv):
            	StrNumCacheLevels=WhiteSpace(arg)
            	NumCacheLevels=int(StrNumCacheLevels)
            	print "\n\t Number of Cache Levels: "+str(NumCacheLevels)
-           elif opt in ("-y", "--hybrid"):
+           elif opt in ("-H", "--hybrid"):
            	StrHybridMemory=WhiteSpace(arg)
            	HybridMemory=int(StrHybridMemory)
            	print "\n\t HybridMemory: "+str(HybridMemory)
@@ -82,6 +82,9 @@ def main(argv):
 		BlkLine=re.match('\s*BLK\s*\d+\s*0x(.*)\s*.*',CurrLine)
 		if BlkLine:
 			BlockID=re.split('\t',BlkLine.group(1))
+			BlockAddressStartIdx=5
+			BlockAddressEndIdx=6
+			#for BlockStats in BlockID:
 			#print "\n\t Is this the BlockID: "+str(BlockID[0])
 			NumBlks+=1
 			MaxLine=LineNum+1+1 #Just need 1st level info now!
@@ -98,9 +101,11 @@ def main(argv):
 						if(len(CacheStats)<(SysIDIdx+6)):
 							print "\n\t Error: The CacheStat line is expected to have "+str(SysIDIdx+6)+" fields while the specified cache line only has "+str(len(CacheStats))+" number of fields "
 							sys.exit()
-						if( (1 * int(CacheStats[SysIDIdx+LoadID]) ) < ( int(CacheStats[SysIDIdx+StoreID]) ) ):
-							OutStream.write("\t "+str(BlockID[0])+"\t"+str(CacheStats[SysIDIdx+HitsID])+"\t"+CacheStats[SysIDIdx+MissID]+"\t"+str(CacheStats[SysIDIdx+LoadID])+"\t"+str(CacheStats[SysIDIdx+StoreID]))
-	
+						if( ( int(CacheStats[SysIDIdx+StoreID]) > 100000) and ( (5.0  * int(CacheStats[SysIDIdx+LoadID]) ) < ( int(CacheStats[SysIDIdx+StoreID]) ) ) ):
+						#if(int(CacheStats[SysIDIdx+StoreID]) > 100000):
+							#OutStream.write("\t "+str(BlockID[0])+"\t"+str(CacheStats[SysIDIdx+HitsID])+"\t"+CacheStats[SysIDIdx+MissID]+"\t"+str(CacheStats[SysIDIdx+LoadID])+"\t"+str(CacheStats[SysIDIdx+StoreID]))
+							#OutStream.write("\t "+str(BlockID[0])+"\t"+" Start: "+str(BlockID[BlockAddressStartIdx])+" End: "+str(BlockID[BlockAddressEndIdx]))
+							OutStream.write(" "+str(BlockID[BlockAddressStartIdx])+"\t "+str(BlockID[BlockAddressEndIdx]))
 	print "\n\t NumBlks: "+str(NumBlks)		
 
 if __name__=="__main__":
