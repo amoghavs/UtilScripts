@@ -2,7 +2,7 @@
 import sys,re,getopt
 
 def usage():
-	print "\n\t AnalyseSiminst.py -i <static-file> -s <systemID of cache> \n\t Optional inputs: -l <Number of cache levels:default=3> -H <0: Standard memory 1: Hybrid memory> -o <Output-file> "
+	print "\n\t InstrumentStaticAnalyse.py -i <static-file> -n Number-of-fields -s Stat-line-num -a Op1 index -b Op2 index. \n\t Optional inputs: -d <debug:default=0> -o <Output-file> "
 	sys.exit()
 def WhiteSpace(Input):
 	temp=re.sub('^\s*','',Input)
@@ -111,6 +111,9 @@ def main(argv):
 						OutStream.write("\n\t"+str(BBID.group(1))+"\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
 					else:
 						OutStream.write("\n\tN/A \t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
+				else:
+					print "\n\t ERROR: (len(ReqFields)-2): "+str(len(ReqFields)-2)+" is not same as "+str(NumFields)+" ie., (len(ReqFields)-2)== NumFields is not met!! \n"
+					sys.exit(0)
 	
 	OutStream.write("\n\n")
 						
