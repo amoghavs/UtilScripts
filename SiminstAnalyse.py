@@ -2,7 +2,7 @@
 import sys,re,getopt
 
 def usage():
-	print "\n\t AnalyseSiminst.py -i <siminst-file> -s <systemID of cache> \n\t Optional inputs: -l <Number of cache levels:default=3> -H <0: Standard memory 1: Hybrid memory> -o <Output-file> "
+	print "\n\t AnalyseSiminst.py -i <siminst-file> -s <systemID of cache> \n\t Optional inputs: -r <Ratio coefficient:default=1> -l <Number of cache levels:default=3> -H <0: Standard memory 1: Hybrid memory> -o <Output-file> "
 	sys.exit()
 def WhiteSpace(Input):
 	temp=re.sub('^\s*','',Input)
@@ -18,8 +18,9 @@ def main(argv):
         NumCacheLevels=''
         HybridMemory=''
         OutFileName=''
+        RatioCoefficient=''
         try:
-           opts, args = getopt.getopt(sys.argv[1:],"i:s:l:H:o:h:v",["input","sysid","levels","hybrid","output","help","verbose"])
+           opts, args = getopt.getopt(sys.argv[1:],"i:s:r:l:H:o:h:v",["input","sysid","ratio","levels","hybrid","output","help","verbose"])
         except getopt.GetoptError:
                 #print str(err) # will print something like "option -a not recognized"
            usage()
@@ -44,6 +45,10 @@ def main(argv):
            	StrHybridMemory=WhiteSpace(arg)
            	HybridMemory=int(StrHybridMemory)
            	print "\n\t HybridMemory: "+str(HybridMemory)
+           elif opt in ("-r", "--ratio"):
+           	RatioCoefficientStr=WhiteSpace(arg)
+           	RatioCoefficient=float(RatioCoefficientStr)
+           	print "\n\t RatioCoefficient: "+str(RatioCoefficient)           	
            elif opt in ("-o","--output"):
            	OutFileName=WhiteSpace(arg)
            	print "\n\t Out file is "+str(OutFileName)
@@ -61,6 +66,9 @@ def main(argv):
 	if(HybridMemory==''):
 		HybridMemory=0
 		print "\n\t Assuming the memory is not hybrid \n" ;
+	if(RatioCoefficient==''):
+		RatioCoefficient=1.0
+		print "\n\t Assuming the ratio required is "+str(RatioCoefficient)+"\n"
 	if(OutFileName!=''):
 		OutStream=open(OutFileName,'w')
 	else:
@@ -77,6 +85,8 @@ def main(argv):
 	MissID=3
 	LoadID=4
 	StoreID=5
+	#RatioCoefficient=1.0
+	SuitableBlks=0
 	for LineNum in range(InputLen):
 		CurrLine=Input[LineNum]
 		BlkLine=re.match('\s*BLK\s*\d+\s*0x(.*)\s*.*',CurrLine)
@@ -101,12 +111,18 @@ def main(argv):
 						if(len(CacheStats)<(SysIDIdx+6)):
 							print "\n\t Error: The CacheStat line is expected to have "+str(SysIDIdx+6)+" fields while the specified cache line only has "+str(len(CacheStats))+" number of fields "
 							sys.exit()
-						if( ( int(CacheStats[SysIDIdx+StoreID]) > 100000) and ( (5.0  * int(CacheStats[SysIDIdx+LoadID]) ) < ( int(CacheStats[SysIDIdx+StoreID]) ) ) ):
+						if( ( int(CacheStats[SysIDIdx+StoreID]) > 100000) and ( (RatioCoefficient  * int(CacheStats[SysIDIdx+LoadID]) ) < ( int(CacheStats[SysIDIdx+StoreID]) ) ) ):
 						#if(int(CacheStats[SysIDIdx+StoreID]) > 100000):
 							#OutStream.write("\t "+str(BlockID[0])+"\t"+str(CacheStats[SysIDIdx+HitsID])+"\t"+CacheStats[SysIDIdx+MissID]+"\t"+str(CacheStats[SysIDIdx+LoadID])+"\t"+str(CacheStats[SysIDIdx+StoreID]))
 							#OutStream.write("\t "+str(BlockID[0])+"\t"+" Start: "+str(BlockID[BlockAddressStartIdx])+" End: "+str(BlockID[BlockAddressEndIdx]))
-							OutStream.write(" "+str(BlockID[BlockAddressStartIdx])+"\t "+str(BlockID[BlockAddressEndIdx]))
-	print "\n\t NumBlks: "+str(NumBlks)		
+							Ratio=0
+							SuitableBlks+=1
+							if(int(CacheStats[SysIDIdx+LoadID])):
+								Ratio= int(CacheStats[SysIDIdx+StoreID])/ int(CacheStats[SysIDIdx+LoadID]) 
+							OutStream.write("\n\t "+str(BlockID[0])+"\t "+str(Ratio)) #str(BlockID[BlockAddressStartIdx])+"\t "+str(BlockID[BlockAddressEndIdx]))
+	OutStream.write("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have RatioCoefficient of "+str(RatioCoefficient) )
+	print("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have RatioCoefficient of "+str(RatioCoefficient) )		
+	OutStream.write("\n\n\n")
 
 if __name__=="__main__":
 	main(sys.argv[1:])

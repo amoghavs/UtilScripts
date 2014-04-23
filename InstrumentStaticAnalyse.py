@@ -18,8 +18,9 @@ def main(argv):
 	StatNum=''
 	Operand1Idx=''
 	Operand2Idx=''
+	RatioCoefficient=''
         try:
-           opts, args = getopt.getopt(sys.argv[1:],"i:n:s:a:b:o:h:d:v",["input","numfields","statnum","operand1","operand2","output","help","verbose"])
+           opts, args = getopt.getopt(sys.argv[1:],"i:r:n:s:a:b:o:h:d:v",["input","ratio","numfields","statnum","operand1","operand2","output","help","verbose"])
         except getopt.GetoptError:
                 #print str(err) # will print something like "option -a not recognized"
            usage()
@@ -36,6 +37,10 @@ def main(argv):
 		NumFieldsStr=WhiteSpace(arg)
 		NumFields=int(NumFieldsStr)
 		print "\n\t Number of fields is "+str(NumFields)
+           elif opt in ("-r", "--ratio"):
+           	RatioCoefficientStr=WhiteSpace(arg)
+           	RatioCoefficient=float(RatioCoefficientStr)
+           	print "\n\t RatioCoefficient: "+str(RatioCoefficient)   		
 	   elif opt in ("-s","-statnum"):
 		StatNumStr=WhiteSpace(arg)
 		StatNum=int(StatNumStr)
@@ -61,6 +66,9 @@ def main(argv):
 
 	if( (SiminstFile=='') or (NumFields=='') or (StatNum=='') or (Operand1Idx=='') or (Operand2Idx=='') ):
 		usage()
+	if(RatioCoefficient==''):
+		RatioCoefficient=1.0
+		print "\n\t Assuming the ratio required is "+str(RatioCoefficient)+"\n"	
 	if(OutFileName!=''):
 		OutStream=open(OutFileName,'w')
 	else:
@@ -81,11 +89,13 @@ def main(argv):
 	OutStream.write("\n\t StatNum: "+str(StatNum))
 	OutStream.write("\n\t NumFields: "+str(NumFields))
 	OutStream.write("\n\t Op1: "+str(Operand1Idx)+" Op1: "+str(Operand2Idx)+"\n\n")
-	
+	SuitableBlks=0
+	#RatioCoefficient=1.0 
 	for LineNum in range(InputLen):
 		CurrLine=Input[LineNum]
 		BlkLine=re.match('\s*\+vec.*',CurrLine)
 		if BlkLine:
+			NumBlks+=1
 			BlockID=re.split('\t',BlkLine.group(0))
 			#print "\n\t Found +vec at line number "+str(LineNum)
 			FieldLine=LineNum+LineNumAdjust
@@ -105,16 +115,20 @@ def main(argv):
 					Mult=Op1*Op2
 					Div=0
 					if(Op2):
-						Div=Op1/Op2
+						Div= Op1/Op2
 					BBID=re.match('.*\#\s*0x(.*)',ReqFields[len(ReqFields)-1])
-					if BBID:
-						OutStream.write("\n\t"+str(BBID.group(1))+"\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
-					else:
-						OutStream.write("\n\tN/A \t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
+					if( Op1 and ( (Op1) > (Op2*RatioCoefficient) )):
+						SuitableBlks+=1
+						if BBID:
+							OutStream.write("\n\t"+str(BBID.group(1))+"\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
+						else:
+							OutStream.write("\n\tN/A \t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
 				else:
 					print "\n\t ERROR: (len(ReqFields)-2): "+str(len(ReqFields)-2)+" is not same as "+str(NumFields)+" ie., (len(ReqFields)-2)== NumFields is not met!! \n"
 					sys.exit(0)
-	
+
+	OutStream.write("\n\n\t Found "+str(NumBlks)+" blocks of which "+str(SuitableBlks)+" blocks have ratio of "+str(RatioCoefficient))	
+	print("\n\n\t Found "+str(NumBlks)+" blocks of which "+str(SuitableBlks)+" blocks have ratio of "+str(RatioCoefficient))
 	OutStream.write("\n\n")
 						
 	
