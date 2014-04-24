@@ -83,7 +83,8 @@ def main(argv):
 	print "\n\t Assuming that the format of BB stats is not changed and has "+str(NumLinesPerBBStats)+" lines in it ! "
 	print "\n\t Will extract the "+str(StatNum)+" numbered(1-index) line in BB stats. It should be having "+str(NumFields)+" fields in it and the indices of Op1 and Op2 are assumed to be index-1 \n"
 
-	OutStream.write("\n\t Format: <Blk-ID> Op1 Op2 Add Sub Mult Div \n\n");
+	#OutStream.write("\n\t Format: <Blk-ID> Op1 Op2 Add Sub Mult Div \n\n");
+	OutStream.write("\n\t Format: <Blk-ID> Op1 Op2 Div \n\n");
 	OutStream.write("\n\t ---------------- Requested details/Working assumption ---------------- \n")
 	OutStream.write("\n\t NumLinesPerBBStats: "+str(NumLinesPerBBStats))
 	OutStream.write("\n\t StatNum: "+str(StatNum))
@@ -115,14 +116,19 @@ def main(argv):
 					Mult=Op1*Op2
 					Div=0
 					if(Op2):
-						Div= Op1/Op2
+						Div= float( Op1/Op2 )
 					BBID=re.match('.*\#\s*0x(.*)',ReqFields[len(ReqFields)-1])
-					if( Op1 and ( (Op1) > (Op2*RatioCoefficient) )):
+					#if( Div > RatioCoefficient):
+					if( (Op1) and (Op1 > (Op2*RatioCoefficient))):
 						SuitableBlks+=1
-						if BBID:
+						"""if BBID:
 							OutStream.write("\n\t"+str(BBID.group(1))+"\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
 						else:
-							OutStream.write("\n\tN/A \t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
+							OutStream.write("\n\tN/A \t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))"""
+						if BBID:
+							OutStream.write("\n\t"+str(BBID.group(1)))#+"\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Div))
+						else:
+							OutStream.write("\n\tNA\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Div))
 				else:
 					print "\n\t ERROR: (len(ReqFields)-2): "+str(len(ReqFields)-2)+" is not same as "+str(NumFields)+" ie., (len(ReqFields)-2)== NumFields is not met!! \n"
 					sys.exit(0)
