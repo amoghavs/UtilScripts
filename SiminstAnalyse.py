@@ -5,14 +5,23 @@ import ExtractHitRatesM
 debug=0
 
 def usage():
-	print "\n\t AnalyseSiminst.py -i <siminst-file> -s <systemID of cache> \n\t Optional inputs: -r <Ratio coefficient:default=1> -l <Number of cache levels:default=3> -H <0: Standard memory 1: Hybrid memory> -o <Output-file> "
+	print "\n\t AnalyseSiminst.py -i <siminst-file> -s <systemID of cache> \n\t Optional inputs: -p <Percent of Other Controlling factor:default=100>-r <Ratio coefficient:default=1> -l <Number of cache levels:default=3> -H <0: Standard memory 1: Hybrid memory> -o <Output-file> "
 	sys.exit()
 def WhiteSpace(Input):
 	temp=re.sub('^\s*','',Input)
 	Output=re.sub('\s*$','',temp)
 	
 	return Output
-	
+
+def hex2dec(Hex):
+	HexExtracted=re.match('\s*0x(.*)',Hex)	
+	if HexExtracted:
+		Dec=int(HexExtracted.group(1),16)
+		return Dec
+	else:
+		print "\n\t ERROR: Unable to extract hexadecimal number! \n\n"
+		sys.exit(0)
+		
 def main(argv):
         SiminstFile=''
         #debug=0
@@ -22,8 +31,9 @@ def main(argv):
         HybridMemory=''
         OutFileName=''
         RatioCoefficient=''
+        PercentControl=''
         try:
-           opts, args = getopt.getopt(sys.argv[1:],"i:s:r:l:H:o:h:v",["input","sysid","ratio","levels","hybrid","output","help","verbose"])
+           opts, args = getopt.getopt(sys.argv[1:],"i:s:r:p:l:H:o:h:v",["input","sysid","ratio","percent","levels","hybrid","output","help","verbose"])
         except getopt.GetoptError:
                 #print str(err) # will print something like "option -a not recognized"
            usage()
@@ -48,10 +58,14 @@ def main(argv):
            	StrHybridMemory=WhiteSpace(arg)
            	HybridMemory=int(StrHybridMemory)
            	print "\n\t HybridMemory: "+str(HybridMemory)
+           elif opt in ("-p", "--percent"):
+           	PercentControlStr=WhiteSpace(arg)
+           	PercentControl=float(PercentControlStr)
+           	print "\n\t PercentControl: "+str(PercentControl)  
            elif opt in ("-r", "--ratio"):
            	RatioCoefficientStr=WhiteSpace(arg)
            	RatioCoefficient=float(RatioCoefficientStr)
-           	print "\n\t RatioCoefficient: "+str(RatioCoefficient)           	
+           	print "\n\t RatioCoefficient: "+str(RatioCoefficient)             	         	
            elif opt in ("-o","--output"):
            	OutFileName=WhiteSpace(arg)
            	print "\n\t Out file is "+str(OutFileName)
@@ -71,7 +85,10 @@ def main(argv):
 		print "\n\t Assuming the memory is not hybrid \n" ;
 	if(RatioCoefficient==''):
 		RatioCoefficient=1.0
-		print "\n\t Assuming the ratio required is "+str(RatioCoefficient)+"\n"
+		print "\n\t Assuming the ratio requested is "+str(RatioCoefficient)+"\n"
+	if(PercentControl==''):
+		PercentControl=0.0
+		print "\n\t Assuming the percent control requested is "+str(PercentControl)+"\n"
 	if(OutFileName!=''):
 		OutStream=open(OutFileName,'w')
 	else:
@@ -84,7 +101,8 @@ def main(argv):
 	# If this script is used for more than one task, can use the following nested loop as a method.
 	NumCacheLevels+=HybridMemory
 	InputLen=len(Input)
-	OutStream.write("\n\t Format:-- <Blk-ID> <Hits> <Misses> <Loads> <Stores> \n");
+	#OutStream.write("\n\t Format:-- <Blk-ID> <Hits> <Misses> <Loads> <Stores> \n");
+	OutStream.write("\n\t Format: -- <Blk-ID> <StoresPercent> <LoadsPercent> <StoresPercentinBB> <LoadsPercentinBB> <MemRefPercentofBB> <StartAddress> <EndAddress> \n");
 	SysIDIdx=1
 	HitsID=SysIDIdx+2
 	MissID=SysIDIdx+3
@@ -94,15 +112,15 @@ def main(argv):
 	SuitableBlks=0
 	TotalSuitableMemRef=0.0
 	TotalSuitableStoreRefPercent=0.0
-	Steps=20
-	PercentCap=200
+	Steps=10
+	PercentCap=50
 	RefPercentHistogram={}
 	Bins=int(PercentCap/Steps)
 	RefPercentHistogram['Mem']={}
 	RefPercentHistogram['Store']={}
 	for CurrBin in range(Bins):
-		RefPercentHistogram['Mem'][CurrBin]=0.0
-		RefPercentHistogram['Store'][CurrBin]=0.0
+		RefPercentHistogram['Mem'][CurrBin]=float(0.0)
+		RefPercentHistogram['Store'][CurrBin]=float(0.0)
 		
 		#print "\n\t Bin: "+str(CurrBin)+" MemRefPercent: "+str(RefPercentHistogram[CurrBin])
 	
@@ -144,26 +162,40 @@ def main(argv):
 							#OutStream.write("\t "+str(BlockID[0])+"\t"+str(CacheStats[HitsID])+"\t"+CacheStats[MissID]+"\t"+str(CacheStats[LoadID])+"\t"+str(CacheStats[StoreID]))
 							#OutStream.write("\t "+str(BlockID[0])+"\t"+" Start: "+str(BlockID[BlockAddressStartIdx])+" End: "+str(BlockID[BlockAddressEndIdx]))
 							MemRefPercent=float( 100*float(Loads+Stores) / TotalAccesses) 
-							Ratio=0.0
+							StoresPercentBB=0.0
+							LoadsPercentBB=0.0
 							#TotalSuitableMemRef+=Loads+Stores
 							if(Loads):
-								Ratio= float(100*float(Stores)/ Loads)
-								if( (Ratio < PercentCap)): # MemRefPercent > 1.0 ) and
+								StoresPercentBB= float(100*float(Stores)/ (Stores+Loads))
+								LoadsPercentBB=100-StoresPercentBB;
+							else:
+								StoresPercentBB=100.0
+							#if( (StoresPercentBB < PercentCap) and (MemRefPercent > 0.5 ) ):
+							if((MemRefPercent >= RatioCoefficient ) ):
+								StoresPercent=(float(100*Stores)/TotalAccesses)
+								LoadsPercent=(float(100*Loads)/TotalAccesses)
+								if(StoresPercentBB>=PercentControl):
 									RefPercentHistogram['Mem'][int(MemRefPercent/Steps)]+=MemRefPercent
+									StoresAsAccessesPercent=(float( 100*Stores)/TotalAccesses)								
+									RefPercentHistogram['Store'][int(StoresPercent/Steps)]+=StoresPercent
 									SuitableBlks+=1
-									TotalSuitableMemRef+=MemRefPercent
+									TotalSuitableMemRef+=(Loads+Stores) #MemRefPercent
 									TotalSuitableStoreRefPercent+=Stores
-									OutStream.write("\n\t "+str(BlockID[0])+"\t"+str(Ratio)+"\t"+str(float(Stores/1E9))+"\t"+str(float(Loads/1E9))+"\t\t"+str(MemRefPercent)) #str(BlockID[BlockAddressStartIdx])+"\t "+str(BlockID[BlockAddressEndIdx]))
-	TotalSuitableStoreRefPercent=float((100*TotalSuitableStoreRefPercent)/TotalAccesses)
+									BlockID[BlockAddressStartIdx]=hex2dec(BlockID[BlockAddressStartIdx])
+									BlockID[BlockAddressEndIdx]=hex2dec(BlockID[BlockAddressEndIdx])
+									#OutStream.write("\n\t "+str(BlockID[0])+"\t"+"%.4f"%StoresPercent+"\t"+"%.4f"%LoadsPercent+"\t"+"%.3f"%StoresPercentBB+"\t"+"%.3f"%LoadsPercentBB+"\t"+"%.3f"%MemRefPercent+"\t"+str(BlockID[BlockAddressStartIdx])+"\t\t"+str(BlockID[BlockAddressEndIdx]))
+									OutStream.write("\t"+str(BlockID[BlockAddressStartIdx])+"\t"+str(BlockID[BlockAddressEndIdx]))
+	TotalSuitableStoreRefPercent=(float(100*TotalSuitableStoreRefPercent)/TotalAccesses)
+	TotalSuitableMemRef=(float(100*TotalSuitableMemRef)/TotalAccesses)
 	for CurrBin in RefPercentHistogram['Mem']:
-		print "\n\t Percent: "+str(CurrBin*Steps)+" MemRefPercent: "+str(RefPercentHistogram['Mem'][CurrBin])
+		print "\n\t Percent: "+str(CurrBin*Steps)+" MemRefPercent: "+str(RefPercentHistogram['Mem'][CurrBin])+" StoresRefPercent "+str(RefPercentHistogram['Store'][CurrBin])
 			
 	if(TotalSuitableMemRef):
-		OutStream.write("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have Percent-cap of "+str(PercentCap)+"\t TotalSuitableMemRef: "+str(TotalSuitableMemRef) +"\t TotalSuitableStoreRefPercent: "+str(TotalSuitableStoreRefPercent))
-		print("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have Percent-cap of "+str(PercentCap)+"\t TotalSuitableMemRef: "+str(TotalSuitableMemRef)+"\t TotalSuitableStoreRefPercent: "+str(TotalSuitableStoreRefPercent ))
+		OutStream.write("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have Percent-cap of "+str(PercentControl)+" or ratio coefficent of "+str(RatioCoefficient)+"\t TotalSuitableMemRef: "+str(TotalSuitableMemRef) +"\t TotalSuitableStoreRefPercent: "+str(TotalSuitableStoreRefPercent))
+		print("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have Percent-cap of "+str(PercentControl)+" or ratio coefficent of "+str(RatioCoefficient)+"\t TotalSuitableMemRef: "+str(TotalSuitableMemRef)+"\t TotalSuitableStoreRefPercent: "+str(TotalSuitableStoreRefPercent ))
 	else:
-		OutStream.write("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have Percent-cap of "+str(PercentCap) +"\t TotalSuitableStoreRefPercent: "+str(TotalSuitableStoreRefPercent))		
-		print("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have Percent-cap of "+str(PercentCap) +"\t TotalSuitableStoreRefPercent: "+str(TotalSuitableStoreRefPercent))		
+		OutStream.write("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have Percent-cap of "+str(PercentControl) +" or ratio coefficent of "+str(RatioCoefficient)+"\t TotalSuitableStoreRefPercent: "+str(TotalSuitableStoreRefPercent))		
+		print("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have Percent-cap of "+str(PercentControl)+" or ratio coefficent of "+str(RatioCoefficient)+"\t TotalSuitableStoreRefPercent: "+str(TotalSuitableStoreRefPercent))		
 
 	#print("\n\n\t Found "+str(NumBlks)+" of which "+str(SuitableBlks)+" have RatioCoefficient of "+str(RatioCoefficient) )		
 	OutStream.write("\n\n\n")

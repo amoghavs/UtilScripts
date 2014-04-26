@@ -103,7 +103,7 @@ def main(SiminstFile,ReqSysID,verbose=0):
 				#print " "+str(CurrLevel[1])+"\t "+(CurrLevel[0])					
 				ReqStats['Loads'].append(CurrLevel)
 				
-			print "\n\t ReqStats--levels: "+str(len(ReqStats['Hits']))
+			#print "\n\t ReqStats--levels: "+str(len(ReqStats['Hits']))
 	return ReqStats
 
 if __name__=="__main__":
