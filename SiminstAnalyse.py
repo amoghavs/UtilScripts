@@ -183,8 +183,8 @@ def main(argv):
 									TotalSuitableStoreRefPercent+=Stores
 									BlockID[BlockAddressStartIdx]=hex2dec(BlockID[BlockAddressStartIdx])
 									BlockID[BlockAddressEndIdx]=hex2dec(BlockID[BlockAddressEndIdx])
-									#OutStream.write("\n\t "+str(BlockID[0])+"\t"+"%.4f"%StoresPercent+"\t"+"%.4f"%LoadsPercent+"\t"+"%.3f"%StoresPercentBB+"\t"+"%.3f"%LoadsPercentBB+"\t"+"%.3f"%MemRefPercent+"\t"+str(BlockID[BlockAddressStartIdx])+"\t\t"+str(BlockID[BlockAddressEndIdx]))
-									OutStream.write("\t"+str(BlockID[BlockAddressStartIdx])+"\t"+str(BlockID[BlockAddressEndIdx]))
+									OutStream.write("\n\t "+str(BlockID[0])+"\t"+"%.4f"%StoresPercent+"\t"+"%.4f"%LoadsPercent+"\t"+"%.3f"%StoresPercentBB+"\t"+"%.3f"%LoadsPercentBB+"\t"+"%.3f"%MemRefPercent+"\t"+str(BlockID[BlockAddressStartIdx])+"\t\t"+str(BlockID[BlockAddressEndIdx]))
+									#OutStream.write("\n\t"+str(BlockID[BlockAddressStartIdx])+"\t"+str(BlockID[BlockAddressEndIdx]))
 	TotalSuitableStoreRefPercent=(float(100*TotalSuitableStoreRefPercent)/TotalAccesses)
 	TotalSuitableMemRef=(float(100*TotalSuitableMemRef)/TotalAccesses)
 	for CurrBin in RefPercentHistogram['Mem']:
