@@ -2,15 +2,74 @@
 import sys,re,getopt
 
 def usage():
-	print "\n\t ExtractCacheStats.py -i <siminst-file> "
+	print "\n\t ExtractCacheStats.py -i <siminst-file> -c <cache-specification-file>"
 	sys.exit()
+	
+def WhiteSpace(Input):
+	temp=re.sub('^\s*','',Input)
+	Output=re.sub('\s*$','',temp)
+	
+	return Output
+#def TotalMemoryAccessTime(CacheStats,MemoryDelays):
+#	for keys in CacheStats:
+
+	
+def ReadCacheSpecs(CacheSpecsInp):
+	CacheSpecs={}
+	LineNum=0
+	CacheSpecs['SysID']=[]
+	for CurrLine in CacheSpecsInp:
+		LineNum+=1
+		CheckComment=re.match('^\s*\#',CurrLine)
+		if CheckComment:
+			print "\n\t Line-num is comment "+str(LineNum)	
+		else:
+			CheckEmptyLine=re.match('^\s*$',CurrLine)
+			if CheckEmptyLine:
+				print "\n\t Line-num is empty "+str(LineNum)	
+			else:
+				SeperateColon=re.split(';',CurrLine)
+				if(len(SeperateColon)!=5):
+					print "\n\t Format error: expected 5 fields, which are seperated by 4 semicolons in line "+str(LineNum)
+					sys.exit()	
+				else:
+					CurrSysID=WhiteSpace(SeperateColon[0])
+					CacheSpecs['SysID'].append(CurrSysID)	
+					NumCacheLevels=int(WhiteSpace(SeperateColon[1]))
+					Hybrid=int(WhiteSpace(SeperateColon[2]))
+					if(Hybrid):
+						NumCacheLevels+=1	
+					print "\n\t Curr Sys ID is: "+str(CurrSysID)+" NumCache: "+str(NumCacheLevels)+" Hybrid "+str(Hybrid) 			
+					ResponseDelay=re.split('\),',SeperateColon[3])
+					if( (len(ResponseDelay)) >= (NumCacheLevels+1)):
+						print "\n\t Found "+str(len(ResponseDelay))+" tuples for memory-response-delay specs! "
+						ExtractedLevels=0;
+						CacheSpecs['SysID']=[]
+						CurrLevelDict={}
+						CurrLevel=0
+						CurrLevelDict[CurrLevel]={}
+						CurrLevelDict[CurrLevel]['Latency']=[]
+						"""for CurrTuple in ResponseDelay:
+							RemoveBraces=re.sub('\s*\(','',CurrTuple);
+							if RemoveBraces:
+								CurrTuple=RemoveBraces
+								BreakParams=CurrTuple.split(',')
+								if(len(BreakParams)!=3):
+									print "\n\t Woah! "+str(len(BreakParams))
+								else:
+									BreakParams[0]=int(WhiteSpace(BreakParams[0]))
+											
+						"""				
+									#print "\n\t "+str((BreakParams))
+	
 
 def main(argv):
         SiminstFile=''
+        CacheSpecsFile=''
         debug=0
         verbose=False
         try:
-           opts, args = getopt.getopt(sys.argv[1:],"i:h:v",["config","deubg","help","verbose"])
+           opts, args = getopt.getopt(sys.argv[1:],"i:c:h:v",["siminst","cachespecs","deubg","help","verbose"])
         except getopt.GetoptError:
                 #print str(err) # will print something like "option -a not recognized"
            usage()
@@ -20,16 +79,27 @@ def main(argv):
            if opt == '-h':
               usage()
               sys.exit()
-           elif opt in ("-i", "--config"):
+           elif opt in ("-i", "--siminst"):
               SiminstFile=arg
+              print "\n\t Input file is "+str(SiminstFile)
+           elif opt in ("-c", "--cachespecs"):
+              CacheSpecsFile=arg
               print "\n\t Input file is "+str(SiminstFile)
            elif opt in ("-v","--verbose"):
            	verbose=False
 	   else:  
 		usage()
+	if( (SiminstFile=='') or (CacheSpecsFile=='') ):
+		usage()
 	Inp=open(SiminstFile)
 	Input=Inp.readlines()
+	Inp.close()
+	
+	CSpecs=open(CacheSpecsFile)
+	CacheSpecsInput=CSpecs.readlines()
+	CSpecs.close()
 
+	
 	NumLines=len(Input)	
 	CacheStats={}
 	for LineNum in range(0,len(Input)):
@@ -105,15 +175,32 @@ def main(argv):
 												Dummy.append(GetStats.group(1))
 												Dummy.append(GetStats.group(2))
 												CacheStats[CurrSysID]['Loads'].append(Dummy)					
+
+
+	for keys in CacheStats:
+		LevelNum=0
+		#print "\n\t SysID: "+str(keys)
+		#print "\n\t Hits-format --Total-- --Hits--" 
+		#CacheStats[keys]['Misses']=[]
+		for CurrLevel in CacheStats[keys]['Hits']:
+			CurrLevel.append(int(CurrLevel[1])-int(CurrLevel[0]))
+			#print " "+str(CurrLevel[1])+"\t "+(CurrLevel[0])
+		#print "\n\t Loads-format --Total-- --Loads--" 
+		for CurrLevel in CacheStats[keys]['Loads']:
+			CurrLevel.append(int(CurrLevel[1])-int(CurrLevel[0]))
+			#print " "+str(CurrLevel[1])+"\t "+(CurrLevel[0])					
+	
+	
 	for keys in CacheStats:
 		LevelNum=0
 		print "\n\t SysID: "+str(keys)
-		print "\n\t Hits-format --Total-- --Hits--" 
+		print "\n\t Hits-format --Total-- --Hits--Misses" 
 		for CurrLevel in CacheStats[keys]['Hits']:
-			print " "+str(CurrLevel[1])+"\t "+(CurrLevel[0])
-		print "\n\t Loads-format --Total-- --Loads--" 
+			print " "+str(CurrLevel[1])+"\t "+str(CurrLevel[0])+"\t "+str(CurrLevel[2])
+		print "\n\t Loads-format --Total-- --Loads--Stores" 
 		for CurrLevel in CacheStats[keys]['Loads']:
-			print " "+str(CurrLevel[1])+"\t "+(CurrLevel[0])					
+			print " "+str(CurrLevel[1])+"\t "+str(CurrLevel[0])+"\t "+str(CurrLevel[2])
+	CacheSpecs=ReadCacheSpecs(CacheSpecsInput)
 
 if __name__=="__main__":
 	main(sys.argv[1:])
