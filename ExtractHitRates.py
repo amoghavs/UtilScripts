@@ -10,9 +10,30 @@ def WhiteSpace(Input):
 	Output=re.sub('\s*$','',temp)
 	
 	return Output
-#def TotalMemoryAccessTime(CacheStats,MemoryDelays):
-#	for keys in CacheStats:
 
+def ExtractSpecs(CurrLevelDict,CurrSpec,SpecToExtract):
+	CurrLevel=0
+	#CurrLevelDict[CurrLevel]={}
+	for CurrTuple in SpecToExtract:
+		RemoveBraces=re.sub('\s*\(','',CurrTuple);
+		if RemoveBraces:
+			CurrTuple=RemoveBraces
+			BreakParams=CurrTuple.split(',')
+			if(len(BreakParams)!=3):
+				print "\n\t Woah! "+str(len(BreakParams))
+			else:
+				ExtractLevel=int(WhiteSpace(BreakParams[0]))
+				if(ExtractLevel>CurrLevel):
+					CurrLevel=ExtractLevel
+				if(not(CurrLevel in CurrLevelDict)):
+					CurrLevelDict[CurrLevel]={}
+				if(not(CurrSpec in CurrLevelDict[CurrLevel])):
+					CurrLevelDict[CurrLevel][CurrSpec]=[]
+					#print "\n\t CurrSpec-- "+str(CurrSpec)
+				BreakParams[1]=WhiteSpace(BreakParams[1])
+				BreakParams[2]=re.sub('\)\s*$','',BreakParams[2])
+				BreakParams[2]=float(WhiteSpace(BreakParams[2]))
+				CurrLevelDict[CurrLevel][CurrSpec].append((BreakParams[1],BreakParams[2]))		
 	
 def ReadCacheSpecs(CacheSpecsInp):
 	CacheSpecs={}
@@ -39,29 +60,27 @@ def ReadCacheSpecs(CacheSpecsInp):
 					Hybrid=int(WhiteSpace(SeperateColon[2]))
 					if(Hybrid):
 						NumCacheLevels+=1	
-					print "\n\t Curr Sys ID is: "+str(CurrSysID)+" NumCache: "+str(NumCacheLevels)+" Hybrid "+str(Hybrid) 			
+					print "\n\t Curr Sys ID is: "+str(CurrSysID)+" NumCache: "+str(NumCacheLevels)+" Hybrid "+str(Hybrid) 
+					CacheSpecs[CurrSysID]={}			
 					ResponseDelay=re.split('\),',SeperateColon[3])
 					if( (len(ResponseDelay)) >= (NumCacheLevels+1)):
 						print "\n\t Found "+str(len(ResponseDelay))+" tuples for memory-response-delay specs! "
-						ExtractedLevels=0;
-						CacheSpecs['SysID']=[]
-						CurrLevelDict={}
-						CurrLevel=0
-						CurrLevelDict[CurrLevel]={}
-						CurrLevelDict[CurrLevel]['Latency']=[]
-						"""for CurrTuple in ResponseDelay:
-							RemoveBraces=re.sub('\s*\(','',CurrTuple);
-							if RemoveBraces:
-								CurrTuple=RemoveBraces
-								BreakParams=CurrTuple.split(',')
-								if(len(BreakParams)!=3):
-									print "\n\t Woah! "+str(len(BreakParams))
-								else:
-									BreakParams[0]=int(WhiteSpace(BreakParams[0]))
-											
-						"""				
-									#print "\n\t "+str((BreakParams))
+						ExtractSpecs(CacheSpecs[CurrSysID],'Latency',ResponseDelay)
+					EnergyDelay=re.split('\),',SeperateColon[4])
+					if( (len(EnergyDelay)) >= (NumCacheLevels+1)):
+						print "\n\t Found "+str(len(EnergyDelay))+" tuples for memory-response-energy specs! "
+						ExtractSpecs(CacheSpecs[CurrSysID],'Energy',EnergyDelay)
+						
+						
+				#for CurrLevel in CacheSpecs[CurrSysID]:
+				#	print "\n\t 1. Key: "+str(CurrLevel)
+				#	CurrSpec='Latency'
+				#	for CurrTuple in CacheSpecs[CurrSysID][CurrLevel][CurrSpec]:
+				#		print "\n\t CurrLevel "+str(CurrLevel)+" CurrTuple "+str(CurrTuple)						
 	
+#def TotalMemoryAccessTime(CacheStats,CacheSpecs):
+#	for keys in CacheStats:
+
 
 def main(argv):
         SiminstFile=''
