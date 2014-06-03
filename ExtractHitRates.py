@@ -42,12 +42,13 @@ def ReadCacheSpecs(CacheSpecsInp):
 	for CurrLine in CacheSpecsInp:
 		LineNum+=1
 		CheckComment=re.match('^\s*\#',CurrLine)
+		Meh=0
 		if CheckComment:
-			print "\n\t Line-num is comment "+str(LineNum)	
+			Meh=0#print "\n\t Line-num is comment "+str(LineNum)	
 		else:
 			CheckEmptyLine=re.match('^\s*$',CurrLine)
 			if CheckEmptyLine:
-				print "\n\t Line-num is empty "+str(LineNum)	
+				Meh=0#print "\n\t Line-num is empty "+str(LineNum)	
 			else:
 				SeperateColon=re.split(';',CurrLine)
 				if(len(SeperateColon)!=5):
@@ -60,26 +61,54 @@ def ReadCacheSpecs(CacheSpecsInp):
 					Hybrid=int(WhiteSpace(SeperateColon[2]))
 					if(Hybrid):
 						NumCacheLevels+=1	
-					print "\n\t Curr Sys ID is: "+str(CurrSysID)+" NumCache: "+str(NumCacheLevels)+" Hybrid "+str(Hybrid) 
+					#print "\n\t Curr Sys ID is: "+str(CurrSysID)+" NumCache: "+str(NumCacheLevels)+" Hybrid "+str(Hybrid) 
 					CacheSpecs[CurrSysID]={}			
 					ResponseDelay=re.split('\),',SeperateColon[3])
 					if( (len(ResponseDelay)) >= (NumCacheLevels+1)):
-						print "\n\t Found "+str(len(ResponseDelay))+" tuples for memory-response-delay specs! "
+						#print "\n\t Found "+str(len(ResponseDelay))+" tuples for memory-response-delay specs! "
 						ExtractSpecs(CacheSpecs[CurrSysID],'Latency',ResponseDelay)
 					EnergyDelay=re.split('\),',SeperateColon[4])
 					if( (len(EnergyDelay)) >= (NumCacheLevels+1)):
-						print "\n\t Found "+str(len(EnergyDelay))+" tuples for memory-response-energy specs! "
+						#print "\n\t Found "+str(len(EnergyDelay))+" tuples for memory-response-energy specs! "
 						ExtractSpecs(CacheSpecs[CurrSysID],'Energy',EnergyDelay)
 						
-						
-				#for CurrLevel in CacheSpecs[CurrSysID]:
-				#	print "\n\t 1. Key: "+str(CurrLevel)
-				#	CurrSpec='Latency'
-				#	for CurrTuple in CacheSpecs[CurrSysID][CurrLevel][CurrSpec]:
-				#		print "\n\t CurrLevel "+str(CurrLevel)+" CurrTuple "+str(CurrTuple)						
-	
-#def TotalMemoryAccessTime(CacheStats,CacheSpecs):
-#	for keys in CacheStats:
+	return CacheSpecs						
+
+def TotalMemoryAccessTimeNEnergy(CacheStats,CacheSpecs,Results):
+	for CurrSysID in CacheStats:
+		Results[CurrSysID]={}
+		Results[CurrSysID]['Latency']=0.0
+		Results[CurrSysID]['Energy']=0.0
+		SpecsKeys=('Latency','Energy')
+		
+		Stats=[]
+		StatsLevel=0
+		NumStatsLevels=len(CacheStats[CurrSysID]['Hits'])
+		for CurrLevel in range(NumStatsLevels):
+			CurrLevelStats=[]
+			CurrLevelStats.append(CacheStats[CurrSysID]['Hits'][CurrLevel])
+			CurrLevelStats.append(CacheStats[CurrSysID]['Loads'][CurrLevel])
+			Stats.append(CurrLevelStats)
+
+		for CurrSpec in SpecsKeys:
+			Accumulator=0.0
+			if CurrSysID in CacheSpecs:
+				for CurrLevel in CacheSpecs[CurrSysID]:
+					CurrLevelStats=Stats[CurrLevel-1] #[CurrSysID]['Loads']
+					for CurrTuple in CacheSpecs[CurrSysID][CurrLevel][CurrSpec]:
+						print "\n\t CurrLevel "+str(CurrLevel)+" CurrTuple "+str(CurrTuple)+" Accumulator "+str(Accumulator)						
+						if(CurrTuple[0]=='rw'):
+							Accumulator+=( CurrTuple[1] *(CurrLevelStats[0][0] + 2* CurrLevelStats[0][2]) )
+						elif(CurrTuple[0]=='r'):
+							Accumulator+=( CurrTuple[1] * CurrLevelStats[1][0] )
+						elif(CurrTuple[0]=='w'):
+							Accumulator+=( CurrTuple[1] * CurrLevelStats[1][2] )
+					
+				Results[CurrSysID][CurrSpec]=Accumulator
+				print "\n\t SysID: "+str(CurrSysID)+" CurrSpec "+str(CurrSpec)+" Accumulator "+str(Results[CurrSysID][CurrSpec])
+			else:
+				print "\n\t FatalError: CacheSpecs is not provided for SysID: "+str(CurrSysID)
+				sys.exit()
 
 
 def main(argv):
@@ -131,7 +160,7 @@ def main(argv):
 				print "\n\t SysID being detected is "+str(SysID.group(1))
 				CacheStats[SysID.group(1)]={}
 				offset=1
-				CurrSysID=SysID.group(1)
+				CurrSysID=WhiteSpace(SysID.group(1))
 				CacheStats[CurrSysID]['Hits']=[]
 				CacheStats[CurrSysID]['Loads']=[]				
 				for j in range(3):
@@ -157,16 +186,16 @@ def main(argv):
 												if verbose:
 													print " "+str(GetStats.group(2))+"\t"+str(GetStats.group(1)) 
 												Dummy=[]
-												Dummy.append(GetStats.group(1))
-												Dummy.append(GetStats.group(2))
+												Dummy.append(int(GetStats.group(1)) )
+												Dummy.append(int(GetStats.group(2)) )
 												CacheStats[CurrSysID]['Hits'].append(Dummy)
 											#CacheStats[CurrSysID]	
 											elif(j==1):
 												if verbose:
 													print " "+str(GetStats.group(2))+"\t"+str(GetStats.group(1))
 												Dummy=[]
-												Dummy.append(GetStats.group(1))
-												Dummy.append(GetStats.group(2))
+												Dummy.append(int(GetStats.group(1)) )
+												Dummy.append(int(GetStats.group(2)) )
 												CacheStats[CurrSysID]['Loads'].append(Dummy)
 
 						else:
@@ -182,8 +211,8 @@ def main(argv):
 										if GetStats:
 											if(FieldNum==1): 
 												Dummy=[]
-												Dummy.append(GetStats.group(1))
-												Dummy.append(GetStats.group(2))
+												Dummy.append(int(GetStats.group(1)) )
+												Dummy.append(int(GetStats.group(2)) )
 												CacheStats[CurrSysID]['Hits'].append(Dummy)						
 												if verbose:
 													print "\n\t --*--- Hits--Total "+str(GetStats.group(2))+"\t"+str(Dummy[1])
@@ -191,8 +220,8 @@ def main(argv):
 												if verbose:
 													print "\n\t --*--- Loads--Total "+str(GetStats.group(2))+"\t"+str(GetStats.group(1)) 
 												Dummy=[]
-												Dummy.append(GetStats.group(1))
-												Dummy.append(GetStats.group(2))
+												Dummy.append(int(GetStats.group(1)) )
+												Dummy.append(int(GetStats.group(2)) )
 												CacheStats[CurrSysID]['Loads'].append(Dummy)					
 
 
@@ -220,6 +249,8 @@ def main(argv):
 		for CurrLevel in CacheStats[keys]['Loads']:
 			print " "+str(CurrLevel[1])+"\t "+str(CurrLevel[0])+"\t "+str(CurrLevel[2])
 	CacheSpecs=ReadCacheSpecs(CacheSpecsInput)
+	Results={}
+	TotalMemoryAccessTimeNEnergy(CacheStats,CacheSpecs,Results)
 
 if __name__=="__main__":
 	main(sys.argv[1:])
