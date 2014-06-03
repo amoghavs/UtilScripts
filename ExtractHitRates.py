@@ -11,7 +11,7 @@ def WhiteSpace(Input):
 	
 	return Output
 
-def ExtractSpecs(CurrLevelDict,CurrSpec,SpecToExtract):
+def ExtractSpecs(CurrLevelDict,CurrSpec,SpecToExtract,NumParams):
 	CurrLevel=0
 	#CurrLevelDict[CurrLevel]={}
 	for CurrTuple in SpecToExtract:
@@ -19,7 +19,7 @@ def ExtractSpecs(CurrLevelDict,CurrSpec,SpecToExtract):
 		if RemoveBraces:
 			CurrTuple=RemoveBraces
 			BreakParams=CurrTuple.split(',')
-			if(len(BreakParams)!=3):
+			if(len(BreakParams)!=NumParams):
 				print "\n\t Woah! "+str(len(BreakParams))
 			else:
 				ExtractLevel=int(WhiteSpace(BreakParams[0]))
@@ -33,7 +33,12 @@ def ExtractSpecs(CurrLevelDict,CurrSpec,SpecToExtract):
 				BreakParams[1]=WhiteSpace(BreakParams[1])
 				BreakParams[2]=re.sub('\)\s*$','',BreakParams[2])
 				BreakParams[2]=float(WhiteSpace(BreakParams[2]))
-				CurrLevelDict[CurrLevel][CurrSpec].append((BreakParams[1],BreakParams[2]))		
+				if(NumParams>3):
+					BreakParams[3]=re.sub('\)\s*$','',BreakParams[3])
+					BreakParams[3]=int(WhiteSpace(BreakParams[3]))
+					CurrLevelDict[CurrLevel][CurrSpec].append((BreakParams[1],BreakParams[2],BreakParams[3]))		
+				else:
+					CurrLevelDict[CurrLevel][CurrSpec].append((BreakParams[1],BreakParams[2]))		
 	
 def ReadCacheSpecs(CacheSpecsInp):
 	CacheSpecs={}
@@ -66,11 +71,11 @@ def ReadCacheSpecs(CacheSpecsInp):
 					ResponseDelay=re.split('\),',SeperateColon[3])
 					if( (len(ResponseDelay)) >= (NumCacheLevels+1)):
 						#print "\n\t Found "+str(len(ResponseDelay))+" tuples for memory-response-delay specs! "
-						ExtractSpecs(CacheSpecs[CurrSysID],'Latency',ResponseDelay)
+						ExtractSpecs(CacheSpecs[CurrSysID],'Latency',ResponseDelay,3)
 					EnergyDelay=re.split('\),',SeperateColon[4])
 					if( (len(EnergyDelay)) >= (NumCacheLevels+1)):
 						#print "\n\t Found "+str(len(EnergyDelay))+" tuples for memory-response-energy specs! "
-						ExtractSpecs(CacheSpecs[CurrSysID],'Energy',EnergyDelay)
+						ExtractSpecs(CacheSpecs[CurrSysID],'Energy',EnergyDelay,4)
 						
 	return CacheSpecs						
 
@@ -95,14 +100,25 @@ def TotalMemoryAccessTimeNEnergy(CacheStats,CacheSpecs,Results):
 			if CurrSysID in CacheSpecs:
 				for CurrLevel in CacheSpecs[CurrSysID]:
 					CurrLevelStats=Stats[CurrLevel-1] #[CurrSysID]['Loads']
-					for CurrTuple in CacheSpecs[CurrSysID][CurrLevel][CurrSpec]:
-						print "\n\t CurrLevel "+str(CurrLevel)+" CurrTuple "+str(CurrTuple)+" Accumulator "+str(Accumulator)						
-						if(CurrTuple[0]=='rw'):
-							Accumulator+=( CurrTuple[1] *(CurrLevelStats[0][0] + 2* CurrLevelStats[0][2]) )
-						elif(CurrTuple[0]=='r'):
-							Accumulator+=( CurrTuple[1] * CurrLevelStats[1][0] )
-						elif(CurrTuple[0]=='w'):
-							Accumulator+=( CurrTuple[1] * CurrLevelStats[1][2] )
+					if(CurrSpec=='Latency'):
+						for CurrTuple in CacheSpecs[CurrSysID][CurrLevel][CurrSpec]:
+							#print "\n\t CurrLevel "+str(CurrLevel)+" CurrTuple "+str(CurrTuple)+" Accumulator "+str(Accumulator)						
+							if(CurrTuple[0]=='rw'):
+								Accumulator+=( CurrTuple[1] *(CurrLevelStats[0][0] + 2* CurrLevelStats[0][2]) )
+							elif(CurrTuple[0]=='r'):
+								Accumulator+=( CurrTuple[1] * CurrLevelStats[1][0] )
+							elif(CurrTuple[0]=='w'):
+								Accumulator+=( CurrTuple[1] * CurrLevelStats[1][2] )
+					elif(CurrSpec=='Energy'):
+						for CurrTuple in CacheSpecs[CurrSysID][CurrLevel][CurrSpec]:
+							#print "\n\t CurrLevel "+str(CurrLevel)+" CurrTuple "+str(CurrTuple)+" Accumulator "+str(Accumulator)						
+							if(CurrTuple[0]=='rw'):
+								Accumulator+=( CurrTuple[1] * CurrTuple[2] * 8 * (CurrLevelStats[0][0] + 2* CurrLevelStats[0][2]) )
+							elif(CurrTuple[0]=='r'):
+								Accumulator+=( CurrTuple[1] * CurrTuple[2] * 8 * CurrLevelStats[1][0] )
+							elif(CurrTuple[0]=='w'):
+								Accumulator+=( CurrTuple[1] * CurrTuple[2] * 8 * CurrLevelStats[1][2] )							
+					
 					
 				Results[CurrSysID][CurrSpec]=Accumulator
 				print "\n\t SysID: "+str(CurrSysID)+" CurrSpec "+str(CurrSpec)+" Accumulator "+str(Results[CurrSysID][CurrSpec])
