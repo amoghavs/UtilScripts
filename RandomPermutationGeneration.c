@@ -13,48 +13,40 @@ int main(int argc,char*argv[])
 	}
 	int Size=atoi(argv[1]);
 	int i=0;
-	int *A,*ToFlag,*FromFlag;
-
+	int *A,*ToFlag;
+	
 	A=malloc(Size*sizeof(int));
 	ToFlag=calloc(Size,sizeof(int));
-	FromFlag=calloc(Size,sizeof(int));
 
 	int Count=0;
 	int Node=0;
 	int JumpTo;
-	//ToFlag[Node]=1;
 
-	//for(i=0;i<Size;i++)
-	//{
-	//	FromFlag[i]=1;
-	//}
-
-	
 	while(Count< (Size-1))
 	{
 		JumpTo=(int)(rand()%Size);
-		printf("\n\t Count: %d Node: %d whose from flag is: %d trying to reach to %d whose toflag is %d ",Count,Node,FromFlag[Node],JumpTo,ToFlag[JumpTo]);
+		printf("\n\t Count: %d Node: %d whose from trying to reach to %d whose toflag is %d ",Count,Node,JumpTo,ToFlag[JumpTo]);
 		
-		if( (ToFlag[JumpTo]==0 ) && ( FromFlag[JumpTo]==0) )
+		if( (ToFlag[JumpTo]==0 ) ) //&& ( FromFlag[JumpTo]==0) )
 		{
 			Count++;
 			A[Node]=JumpTo;
-			ToFlag[JumpTo]=1;
-			FromFlag[Node]=1;
-			printf("\n\t Node: %d A[Node]: %d JumpTo: %d ToFlag[Jumpto]: %d FromFlag[Node]: %d ",Node,A[Node],JumpTo,ToFlag[JumpTo],FromFlag[Node]);
+			ToFlag[JumpTo]++;
+			ToFlag[Node]++;
+			printf("\n\t Node: %d A[Node]: %d JumpTo: %d ToFlag[Jumpto]: %d ",Node,A[Node],JumpTo,ToFlag[JumpTo]);
 			Node=JumpTo;
 		}
 			
 
 	}
 	A[Node]=0;
-	int Sum=0;
+	long int Sum=0;
 	for(i=0;i<Size;i++)
 	{
 		printf("\n\t i: %d A[i]: %d ",i,A[i]);
 		Sum+=A[i];
 	}
-	printf("\n\t Sum: %d \n\n",Sum);
+	printf("\n\t Sum: %ld \n\n",Sum);
 return 0;
 
 }

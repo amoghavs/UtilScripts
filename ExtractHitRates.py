@@ -135,7 +135,8 @@ def TotalMemoryAccessTimeNEnergy(CacheStats,CacheSpecs,SysIDSpecs,Results,verbos
 						CurrLevelStats=Stats[NumStatsLevels-1]
 						for CurrTuple in CacheSpecs[CurrSysID][CurrLevel][CurrSpec]:
 							#CurrTuple=CacheSpecs[CurrSysID][NumStatsLevels+1][CurrSpec]
-							print "\n\t CurrTuple: "+str(CurrTuple)+" len: "+str(len(CurrTuple))+" CurrLevel: "+str(NumStatsLevels+1)+" {CurrTUple} "+str(CacheSpecs[CurrSysID][1][CurrSpec])
+							if verbose:
+								print "\n\t CurrTuple: "+str(CurrTuple)+" len: "+str(len(CurrTuple))+" CurrLevel: "+str(NumStatsLevels+1)+" {CurrTUple} "+str(CacheSpecs[CurrSysID][1][CurrSpec])
 							if(CurrSpec=='Latency'):
 								Accumulator+=( CurrTuple[1] * 1 ) #* ( CurrLevelStats[0][2]) )
 							elif(CurrSpec=='Energy'):
@@ -193,6 +194,8 @@ def main(argv):
 	NumFiles=len(InputFileSet)	
 	CacheStats={}
 	
+	AMATCollection={}
+	FileNameCollection=[]
 	for CurrInpFile in InputFileSet:
 		TempFileName=RemoveWhiteSpace(CurrInpFile)
 		if(TempFileName):
@@ -307,15 +310,34 @@ def main(argv):
 			(CacheSpecs,SysIDSpecs)=ReadCacheSpecs(CacheSpecsInput)
 			Results={}
 			TotalMemoryAccessTimeNEnergy(CacheStats,CacheSpecs,SysIDSpecs,Results,verbose)
-			print "\n\t CurrInpFile: "+str(TempFileName)
-			print "\n\t SysID\t\t\t\t HitRate\t\t AMAT "
+			#print "\n\t CurrInpFile: "+str(TempFileName)
+			#print "\n\t SysID\t\t\t\t HitRate\t\t AMAT "
+			AMATCollection[TempFileName]={}
 			for keys in CacheStats:
 				HitRateString=''
+				AccessRateString=''
+				AMATCollection[TempFileName][keys]=[]
+				TotalAccess=CacheStats[keys]['Hits'][0][1]
+				#print "\n\t TotalAccess: "+str(TotalAccess) 
 				for CurrLevel in CacheStats[keys]['Hits']:
 					HitRate=float( float(CurrLevel[0])/(CurrLevel[1]) )
+					AccessRate=float( float(CurrLevel[0])/(TotalAccess) )
 					HitRateString+='\t'+str(round(HitRate,5))
+					AccessRateString+='\t'+str(round(AccessRate,8))
 				#print "\n\t SysID: "+str(keys)+" HitRate: "+str(HitRateString)+" AMAT: "+str(Results[keys]['Latency'])
-				print "\n\t "+str(keys)+"\t"+str(HitRateString)+"\t"+str(Results[keys]['Latency'])
+				#print "\n\t "+str(keys)+"\t"+str(HitRateString)+"\t"+str(Results[keys]['Latency'])
+				AMATCollection[TempFileName][keys].append("\n\t\t "+str(keys)+"\t"+str(TotalAccess)+"\t"+str(HitRateString)+"\t"+str(AccessRateString)+"\t"+str(Results[keys]['Latency']))
+				FileNameCollection.append(TempFileName)
+				
+				
+        				
+	print "\n\t Format: SysID\t\t\t\t TotalAccess \t\t HitRate\t\t AccessRate\t\t AMAT "
+	
+	for CurrFile in FileNameCollection:
+		print "\n\t Current file: "+str(CurrFile)
+		for CurrSysID in (AMATCollection[CurrFile]):
+			for CurrLine in (AMATCollection[CurrFile][CurrSysID]): 
+				print str(CurrLine)
 	
 	print"\n"
 
