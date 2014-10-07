@@ -136,6 +136,7 @@ def main(argv):
 	FieldsLocation={}
 	LineStartIdentifier={}
 	SequenceNotFound=1
+	
 
 	LineIdentifierIdx=0
 	LineNumIdx=1
@@ -171,34 +172,94 @@ def main(argv):
 							AllFieldsFound=1 #Although line num is zero indexed since start of header is precedded by identifier '<no additional info>' even that will be counted as a fields' line. Hence making this exception to compare a 0 and 1 index count.
 						else: 
 							print "\n\t AllFieldsFound: "+str(AllFieldsFound)+" NumLinesPerBBStats: "+str(NumLinesPerBBStats)+" str FieldsLineNum: "+str(FieldsLineNum)
+					#sys.exit()
 			else:
 				break
 
-	RequiredLines={}			
+	RequiredLines={}	
+	print "\n\t -------------------------------------- "		
 	for CurrField in RequestedFields:
 		if( CurrField in FieldsLocation):
 			CurrFieldsLine=FieldsLocation[CurrField][LineNumIdx]
-			RequiredLines[CurrFieldsLine]=CurrFieldsLine
-			print "\n\t Field: "+str(CurrField)+" is available in "+str(CurrFieldsLine)
+			RequestedFields[CurrField]=FieldsLocation[CurrField]
+			if(not(CurrFieldsLine in RequiredLines)):
+				RequiredLines[CurrFieldsLine]=[]	
+			RequiredLines[CurrFieldsLine].append(CurrField)
+			print "\n\t Field: "+str(CurrField)+" is available in "+str(CurrFieldsLine)+" FieldNum: "+str(FieldsLocation[CurrField][FieldNumIdx])
 		else:
 			print "\n\t ERROR: Field "+str(CurrField)+" is not found in the header!! "
 			sys.exit() 
 			
-	sys.exit()
-
+	#sys.exit()
+	ExtractedStats={}
         for idx,CurrFile in enumerate(ListofFiles):
 	 IpFile=open(CurrFile)
 	 CurrStaticFile=IpFile.readlines()
 	 IpFile.close()
 	 InputLen=len(CurrStaticFile)	 
-
+	 ExtractedStats[CurrFile]={}
 	 for LineNum in range(InputLen):
 		CurrLine=CurrStaticFile[LineNum]
 		BlkLine=re.match('\s*\+vec.*',CurrLine)
 		if BlkLine:
 			NumBlks+=1
 			BlockID=re.split('\t',BlkLine.group(0))
-			#print "\n\t Found +vec at line number "+str(LineNum)
+			print "\n\t Found +vec at line number "+str(LineNum)+" so should start "+str(FieldsLineNum)+" before this line!"
+			print "\n\t Is this the start-line: "+str(CurrStaticFile[LineNum-FieldsLineNum])
+			StartLineNum=(LineNum-FieldsLineNum)
+			for CurrField in RequestedFields:
+				print "\t I am "+str(CurrField)+" my details are "+str(RequestedFields[CurrField])
+			BBExtract=re.match("\s*.*\#(.*)",	CurrStaticFile[StartLineNum])
+			ExtractedStats[CurrFile][BBExtract]={}
+			if BBExtract:
+				BBphrase=re.split('\t',BBExtract.group(1))
+				BBNum=RemoveWhiteSpace(BBphrase[0])
+				print "\t BBNum?? "+str(BBNum)
+			for CurrLineNum in RequiredLines:
+				print "\t Need line: "+str(CurrLineNum)	
+				CurrLine=CurrStaticFile[StartLineNum+CurrLineNum]
+				CheckLine=re.match('\s*\+(.*)',CurrLine)
+				if CheckLine:
+					RestOfLine=CheckLine.group(1)
+					Breakdown=re.split('\t',RestOfLine)
+					#print "\n\t Rest of it: "+str(RestOfLine)
+					StartTerm=RemoveWhiteSpace(Breakdown[0])
+					print "\t Num(Breakdown) "+str(len(Breakdown))+" Start-- "+str(StartTerm)
+					if(StartTerm!='dud'):
+					 for CurrField in RequiredLines[CurrLineNum]:
+						FieldNum=RequestedFields[CurrField][FieldNumIdx]
+						print "\t Will get "+str(CurrField)+" at "+str(FieldNum)+" am I accessing the right one?? "+str(Breakdown[FieldNum])
+						ExtractedStats[CurrFile][BBExtract][CurrField]=Breakdown[FieldNum]
+					else:
+					 ExtractedStats[CurrFile][BBExtract]['dud']={}
+					 TotalExprn=''
+					 for Idx in range(1,len(Breakdown)):
+					  	UseThisToBreakdown=Breakdown[Idx]
+					  	if(Idx==(len(Breakdown)-1)):
+					  		 UseThisToBreakdown=''
+							 LastItemExtract=re.match('\s*(.*)\s*\#.*',Breakdown[len(Breakdown)-1])
+							 if(LastItemExtract):
+							 	LastItem=RemoveWhiteSpace(LastItemExtract.group(1))
+							 	UseThisToBreakdown=LastItem
+							 	print "\t LastItem: "+str(LastItem)
+						if(UseThisToBreakdown!=''):	 	 	
+						   	TotalExprn=UseThisToBreakdown+'\t'+TotalExprn
+						 	MiniBreakdown=re.split(':',UseThisToBreakdown)
+					 		if(len(MiniBreakdown)==3):
+						 		dist=int(MiniBreakdown[0])
+						 		ExtractedStats[CurrFile][BBExtract]['dud'][dist]=(int(MiniBreakdown[1]),int(MiniBreakdown[2]))
+						 		print "\t Dud-term: "+str(UseThisToBreakdown)+' dist '+str(dist)+' mini-break '+str(ExtractedStats[CurrFile][BBExtract]['dud'][int(MiniBreakdown[0])])
+						 	else:
+						 		print "\t LineNum: "+str(StartLine+CurrLineNum)+" exprn: "+str(UseThisToBreakdown)+" does not have three fields seperated by ':', instead has "+str(len(MiniBreakdown))
+						 		print "\t Currently this situation is handled as critical error!! "
+						 		sys.exit()
+						 		
+					 		
+					 	print "\t TotalExprn: "+str(TotalExprn)
+					
+						
+			sys.exit()
+			
 			FieldLine=LineNum+LineNumAdjust
 			# Can actually loop over all the details/lines if needed! Can/Should adjust LineNumAdjust for that! 
 			if(FieldLine):
