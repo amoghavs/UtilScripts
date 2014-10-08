@@ -242,7 +242,7 @@ def main(argv):
 			for CurrLineNum in RequiredLines:
 				print "\n\t Need line: "+str(CurrLineNum)	
 				CurrLine=CurrStaticFile[StartLineNum+CurrLineNum]
-				CheckLine=re.match('\s*\+(.*)',CurrLine)
+				CheckLine=re.match('\s*\+(.*)\s*\#',CurrLine)
 				if CheckLine:
 					RestOfLine=CheckLine.group(1)
 					Breakdown=re.split('\t',RestOfLine)
@@ -297,7 +297,7 @@ def main(argv):
 						if(CurrField!='dud'):
 							AllFields+='\t'+str(ExtractedStats[CurrFile][CurrBB][CurrField])
 							print "\t CurrField: "+str(CurrField)+"---"+str(ExtractedStats[CurrFile][CurrBB][CurrField])
-				OutStream.write("\t "+str(CurrFile)+"\t "+str(CurrBB)+" "+str(AllFields))
+				OutStream.write("\n\t "+str(CurrFile)+"\t "+str(CurrBB)+" "+str(AllFields))
 
 	print "\t $$$$$ "				
 	#OutStream.write("\n\n\t Found "+str(NumBlks)+" blocks of which "+str(SuitableBlks)+" blocks have ratio of "+str(RatioCoefficient))	
