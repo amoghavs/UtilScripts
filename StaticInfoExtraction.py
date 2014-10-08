@@ -17,7 +17,7 @@ def main(argv):
 	BBFileName=''
 	FieldsFileName=''
         try:
-           opts, args = getopt.getopt(sys.argv[1:],"i:b:f:h:d",["input","bb","fields","ratio","numfields","statnum","operand1","operand2","output","help","verbose"])
+           opts, args = getopt.getopt(sys.argv[1:],"i:b:f:o:h:v",["input=","bb=","fields=","output=""help=","verbose="])
         except getopt.GetoptError:
                 #print str(err) # will print something like "option -a not recognized"
            usage()
@@ -36,29 +36,35 @@ def main(argv):
 	   elif opt in ("-f","-fields"):
 		FieldsFileName=RemoveWhiteSpace(arg)
 		print "\n\t Fields file name "+str(FieldsFileName)
+	   elif opt in ("-o","-output"):
+		OutFileName=RemoveWhiteSpace(arg)
+		print "\n\t Fields file name "+str(OutFileName)
 	   elif opt in ("-d","-debug"):
 		debugStr=RemoveWhiteSpace(arg)
 		debug=int(debugStr)
 		print "\n\t Debug option is "+str(debug)
+	   elif opt in ("-v","-verbose"):	
+	   	Verbose=int(RemoveWhiteSpace(Arg))
+	   	
 	   else:  
 		usage()
-		
 
-	if( (SourceFile=='') ):
+	if( (SourceFile=='') or (BBFileName=='') ):
 		usage()
 		
 	IpFile=open(SourceFile)
 	Input=IpFile.readlines()
 	IpFile.close()
-
-	NumBlks=0
-	InputLen=len(Input)
-
+			
+	if( (OutFileName=='')):
+		OutFileName='DefaultOutputFile.log'
+		print "\t INFO: Default output file being used-- "+str(OutFileName)
+	OutStream=open(OutFileName,'w')
         ListofFiles=[] 
 	for CurrLine in Input:
-		Tmp=RemoveWhiteSpace(CurrLine)
-		if(not(Tmp=='')):
-			ListofFiles.append(Tmp)	       
+		Temp=RemoveWhiteSpace(CurrLine)
+		if(not(Temp=='')):
+			ListofFiles.append(Temp)	       
 	print "\n\t Number of files to process: "+str(len(ListofFiles))
 	NumofFilestoProcess=len(ListofFiles)
 	if(NumofFilestoProcess==0):
@@ -91,7 +97,7 @@ def main(argv):
 	
 	RequestedFields={}
 	if(FieldsFileName==''):
-		print "\n\t Fields file is not provided. Hence following fields will be extracted and provided!! "
+		print "\n\t Fields file is not provided. Hence following fields will be extracted !! "
 		RequestedFields['branch_op']=1
 		RequestedFields['int_op']=1
 		RequestedFields['logic_op']=1
@@ -100,10 +106,10 @@ def main(argv):
 		RequestedFields['total_mem_op']=1		
 		RequestedFields['total_mem_bytes']=1
 		RequestedFields['dudist1']=1
-		RequestedFields['duint1']=1
-		RequestedFields['dufp1']=1
-		RequestedFields['dufp2']=1
-		RequestedFields['ducnt2']=1
+		#RequestedFields['duint1']=1
+		#RequestedFields['dufp1']=1
+		#RequestedFields['dufp2']=1
+		#RequestedFields['ducnt2']=1
 		for CurrField in RequestedFields:
 			print "\t "+str(CurrField)
 	else:
@@ -121,7 +127,7 @@ def main(argv):
 	NumLinesPerBBStats=10
 	print "\n\t Assuming that the format of BB stats is not changed and has "+str(NumLinesPerBBStats)+" lines in it ! "
 
-	#OutStream.write("\n\t Format: <Blk-ID> Op1 Op2 Add Sub Mult Div \n\n");
+	
 	#OutStream.write("\n\t Format: <Blk-ID> Op1 Op2 Div \n\n");
 	#OutStream.write("\n\t ---------------- Requested details/Working assumption ---------------- \n")
 	#OutStream.write("\n\t NumLinesPerBBStats: "+str(NumLinesPerBBStats))
@@ -141,7 +147,7 @@ def main(argv):
 	LineIdentifierIdx=0
 	LineNumIdx=1
 	FieldNumIdx=2
-
+	BBValuesStartLine=-1
 	for LineNum,CurrLine in enumerate(ReadHeader):
 			if( not(AllFieldsFound) ):
 				if SequenceNotFound:
@@ -150,10 +156,11 @@ def main(argv):
 						print "\n\t Apparently found sequence line on linenum "+str(LineNum)+" is it?? "+str(CurrLine)
 						SequenceNotFound=0
 						FieldsLineNum+=1
+						BBValuesStartLine=LineNum+NumLinesPerBBStats
 				else:
 					CheckLine=re.match('\s*\#\s*\+(.*)',CurrLine)
 					if CheckLine:
-						print "\n\t Rest of it: "+str(CheckLine.group(1))
+						#print "\n\t Rest of it: "+str(CheckLine.group(1))
 						SplitFields=re.split('<',CheckLine.group(1))
 						FieldsLineNum+=1
 						CurrLineStartIdentifier=''
@@ -161,25 +168,31 @@ def main(argv):
 							if FieldNum:
 								CurrField=RemoveWhiteSpace(CurrField)
 								Tmp=re.sub('\>(.*)$','',CurrField)
-								print "\n\t CurrField: "+str(CurrField)+" Tmp "+str(Tmp)
+								#print "\n\t CurrField: "+str(CurrField)+" Tmp "+str(Tmp)
 								Tmp=RemoveWhiteSpace(Tmp)
 								FieldsLocation[Tmp]=(CurrLineStartIdentifier,FieldsLineNum,FieldNum)
 							else:
-								print "\n\t LineStartIdentifier: "+str(CurrField)
+								#print "\n\t LineStartIdentifier: "+str(CurrField)
 								LineStartIdentifier[CurrField]=FieldsLineNum
 								CurrLineStartIdentifier=CurrField
 						if(FieldsLineNum==(NumLinesPerBBStats-1)):
 							AllFieldsFound=1 #Although line num is zero indexed since start of header is precedded by identifier '<no additional info>' even that will be counted as a fields' line. Hence making this exception to compare a 0 and 1 index count.
-						else: 
-							print "\n\t AllFieldsFound: "+str(AllFieldsFound)+" NumLinesPerBBStats: "+str(NumLinesPerBBStats)+" str FieldsLineNum: "+str(FieldsLineNum)
+						#else: 
+							#print "\n\t AllFieldsFound: "+str(AllFieldsFound)+" NumLinesPerBBStats: "+str(NumLinesPerBBStats)+" str FieldsLineNum: "+str(FieldsLineNum)
 					#sys.exit()
 			else:
 				break
 
 	RequiredLines={}	
-	print "\n\t -------------------------------------- "		
+	print "\n\t -------------------------------------- "
+	FieldsStr=''
+	FieldsCollection=[]		
 	for CurrField in RequestedFields:
 		if( CurrField in FieldsLocation):
+			if(CurrField!='dudist1'):
+				FieldsStr+='\t'+str(CurrField)
+				FieldsCollection.append(CurrField)
+				#print "\n\t Field---- "+str(CurrField)
 			CurrFieldsLine=FieldsLocation[CurrField][LineNumIdx]
 			RequestedFields[CurrField]=FieldsLocation[CurrField]
 			if(not(CurrFieldsLine in RequiredLines)):
@@ -190,33 +203,44 @@ def main(argv):
 			print "\n\t ERROR: Field "+str(CurrField)+" is not found in the header!! "
 			sys.exit() 
 			
-	#sys.exit()
+	OutStream.write("\n\t Format: <File>\t <BB-ID>\t "+str(FieldsStr) );
+	OutStream.write("\n\n\t\t ------------------------------------------------------------------\n\n")
+	
 	ExtractedStats={}
         for idx,CurrFile in enumerate(ListofFiles):
-	 IpFile=open(CurrFile)
-	 CurrStaticFile=IpFile.readlines()
-	 IpFile.close()
-	 InputLen=len(CurrStaticFile)	 
-	 ExtractedStats[CurrFile]={}
-	 for LineNum in range(InputLen):
-		CurrLine=CurrStaticFile[LineNum]
-		BlkLine=re.match('\s*\+vec.*',CurrLine)
-		if BlkLine:
-			NumBlks+=1
-			BlockID=re.split('\t',BlkLine.group(0))
-			print "\n\t Found +vec at line number "+str(LineNum)+" so should start "+str(FieldsLineNum)+" before this line!"
-			print "\n\t Is this the start-line: "+str(CurrStaticFile[LineNum-FieldsLineNum])
-			StartLineNum=(LineNum-FieldsLineNum)
-			for CurrField in RequestedFields:
-				print "\t I am "+str(CurrField)+" my details are "+str(RequestedFields[CurrField])
-			BBExtract=re.match("\s*.*\#(.*)",	CurrStaticFile[StartLineNum])
-			ExtractedStats[CurrFile][BBExtract]={}
-			if BBExtract:
-				BBphrase=re.split('\t',BBExtract.group(1))
-				BBNum=RemoveWhiteSpace(BBphrase[0])
-				print "\t BBNum?? "+str(BBNum)
+		IpFile=open(CurrFile)
+		CurrStaticFile=IpFile.readlines()
+		IpFile.close()
+		InputLen=len(CurrStaticFile)	 
+		ExtractedStats[CurrFile]={}
+		LineNum=BBValuesStartLine
+
+		FindBBs={}
+		for CurrBB in ListofBBs:
+			FindBBs[CurrBB]=0
+		NumBBsNeeded=0
+		NumBBsFound=0
+		for CurrBB in FindBBs:
+			NumBBsNeeded+=1
+			 
+		while(LineNum<InputLen):
+		 CurrLine=CurrStaticFile[LineNum]
+		 BBExtract=re.match("\s*.*\#(.*)",CurrStaticFile[LineNum])
+		 if BBExtract:
+		  BBphrase=re.split('\t',BBExtract.group(1))
+		  BBNum=RemoveWhiteSpace(BBphrase[0])
+		  print "\t LineNum: "+str(LineNum)
+		  if(BBNum in FindBBs):
+		  	print "\t BBNum: "+str(BBNum)
+			print "\t LineNum: "+str(LineNum)
+	   		FindBBs[BBNum]=1
+		   	print "Yabadabbadooooo! \n\n"
+			print "\n\t Is this the start-line: "+str(CurrStaticFile[LineNum])
+			StartLineNum=(LineNum)
+			ExtractedStats[CurrFile][BBNum]={}
+
 			for CurrLineNum in RequiredLines:
-				print "\t Need line: "+str(CurrLineNum)	
+				print "\n\t Need line: "+str(CurrLineNum)	
 				CurrLine=CurrStaticFile[StartLineNum+CurrLineNum]
 				CheckLine=re.match('\s*\+(.*)',CurrLine)
 				if CheckLine:
@@ -228,10 +252,10 @@ def main(argv):
 					if(StartTerm!='dud'):
 					 for CurrField in RequiredLines[CurrLineNum]:
 						FieldNum=RequestedFields[CurrField][FieldNumIdx]
-						print "\t Will get "+str(CurrField)+" at "+str(FieldNum)+" am I accessing the right one?? "+str(Breakdown[FieldNum])
-						ExtractedStats[CurrFile][BBExtract][CurrField]=Breakdown[FieldNum]
+						print "\t Field "+str(CurrField)+" "+str(Breakdown[FieldNum])
+						ExtractedStats[CurrFile][BBNum][CurrField]=Breakdown[FieldNum]
 					else:
-					 ExtractedStats[CurrFile][BBExtract]['dud']={}
+					 ExtractedStats[CurrFile][BBNum]['dud']={}
 					 TotalExprn=''
 					 for Idx in range(1,len(Breakdown)):
 					  	UseThisToBreakdown=Breakdown[Idx]
@@ -241,63 +265,44 @@ def main(argv):
 							 if(LastItemExtract):
 							 	LastItem=RemoveWhiteSpace(LastItemExtract.group(1))
 							 	UseThisToBreakdown=LastItem
-							 	print "\t LastItem: "+str(LastItem)
+							 	#print "\t LastItem: "+str(LastItem)
 						if(UseThisToBreakdown!=''):	 	 	
-						   	TotalExprn=UseThisToBreakdown+'\t'+TotalExprn
+						   	TotalExprn+='\t'+UseThisToBreakdown
 						 	MiniBreakdown=re.split(':',UseThisToBreakdown)
 					 		if(len(MiniBreakdown)==3):
 						 		dist=int(MiniBreakdown[0])
-						 		ExtractedStats[CurrFile][BBExtract]['dud'][dist]=(int(MiniBreakdown[1]),int(MiniBreakdown[2]))
-						 		print "\t Dud-term: "+str(UseThisToBreakdown)+' dist '+str(dist)+' mini-break '+str(ExtractedStats[CurrFile][BBExtract]['dud'][int(MiniBreakdown[0])])
+						 		ExtractedStats[CurrFile][BBNum]['dud'][dist]=(int(MiniBreakdown[1]),int(MiniBreakdown[2]))
+						 		#print "\t Dud-term: "+str(UseThisToBreakdown)+' dist '+str(dist)+' mini-break '+str(ExtractedStats[CurrFile][BBExtract]['dud'][int(MiniBreakdown[0])])
 						 	else:
 						 		print "\t LineNum: "+str(StartLine+CurrLineNum)+" exprn: "+str(UseThisToBreakdown)+" does not have three fields seperated by ':', instead has "+str(len(MiniBreakdown))
 						 		print "\t Currently this situation is handled as critical error!! "
 						 		sys.exit()
 						 		
 					 		
-					 	print "\t TotalExprn: "+str(TotalExprn)
-					
-						
-			sys.exit()
-			
-			FieldLine=LineNum+LineNumAdjust
-			# Can actually loop over all the details/lines if needed! Can/Should adjust LineNumAdjust for that! 
-			if(FieldLine):
-				ReqFields=re.split('\t',CurrStaticFile[FieldLine])
-				# First and last field is common/non-stat line, except maybe the first line! 
-				if debug: 
-					OutStream.write("\n\t Field line: "+str(CurrStaticFile[FieldLine]))
-				if( (len(ReqFields)-2)== NumFields):				
-					if debug:
-						OutStream.write("\n\t So, I have "+str(len(ReqFields)-2)+" fields, it is equal to "+str(NumFields)+" !!")
-					"""Op1=int(RemoveWhiteSpace(ReqFields[Operand1Idx]))
-					Op2=int(RemoveWhiteSpace(ReqFields[Operand2Idx]))
-					Add=Op1+Op2
-					Sub=Op1-Op2
-					Mult=Op1*Op2
-					Div=0
-					if(Op2):
-						Div= float( Op1/Op2 )
-					BBID=re.match('.*\#\s*0x(.*)',ReqFields[len(ReqFields)-1])
-					#if( Div > RatioCoefficient):
-					if( (Op1) and (Op1 > (Op2*RatioCoefficient))):
-						SuitableBlks+=1
-						""if BBID:
-							OutStream.write("\n\t"+str(BBID.group(1))+"\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))
-						else:
-							OutStream.write("\n\tN/A \t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Add)+"\t"+str(Sub)+"\t"+str(Mult)+"\t"+str(Div))""
-						if BBID:
-							OutStream.write("\n\t"+str(BBID.group(1))+"\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Div))
-						else:
-							OutStream.write("\n\tNA\t"+str(Op1)+"\t"+str(Op2)+"\t"+str(Div))"""
-				
-				else:
-					print "\n\t ERROR: (len(ReqFields)-2): "+str(len(ReqFields)-2)+" is not same as "+str(NumFields)+" ie., (len(ReqFields)-2)== NumFields is not met!! \n"
-					sys.exit(0)
+					 print "\t TotalExprn: "+str(TotalExprn)
+			NumBBsFound+=1
+			#sys.exit()
+		 if(NumBBsNeeded==NumBBsFound):
+		 	LineNum=InputLen								
+		 else:	
+		 	LineNum+=NumLinesPerBBStats										
+							
 
-	OutStream.write("\n\n\t Found "+str(NumBlks)+" blocks of which "+str(SuitableBlks)+" blocks have ratio of "+str(RatioCoefficient))	
-	print("\n\n\t Found "+str(NumBlks)+" blocks of which "+str(SuitableBlks)+" blocks have ratio of "+str(RatioCoefficient))
-	OutStream.write("\n\n")
+		for CurrBB in FindBBs:
+			print "\t 1. What next ??"
+			if(CurrBB in ExtractedStats[CurrFile]):
+				AllFields=''
+				for CurrField in FieldsCollection:
+					if(CurrField in ExtractedStats[CurrFile][CurrBB]):
+						if(CurrField!='dud'):
+							AllFields+='\t'+str(ExtractedStats[CurrFile][CurrBB][CurrField])
+							print "\t CurrField: "+str(CurrField)+"---"+str(ExtractedStats[CurrFile][CurrBB][CurrField])
+				OutStream.write("\t "+str(CurrFile)+"\t "+str(CurrBB)+" "+str(AllFields))
+
+	print "\t $$$$$ "				
+	#OutStream.write("\n\n\t Found "+str(NumBlks)+" blocks of which "+str(SuitableBlks)+" blocks have ratio of "+str(RatioCoefficient))	
+	#print("\n\n\t Found "+str(NumBlks)+" blocks of which "+str(SuitableBlks)+" blocks have ratio of "+str(RatioCoefficient))
+	#OutStream.write("\n\n")
 						
 	
 
