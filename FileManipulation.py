@@ -3,8 +3,9 @@ import sys,getopt,subprocess,re,math,commands,time,copy,random
 def usage():
 	print "\n\t python FileManipulation.py has following utilities and the respective inputs are displayed along! "
 	print "\t CopyMultipleTimes -i/--input <InputFile> -n/--numrepeat <Number-of-times-a-line-will-be-repeated> -o/--output <Output-file> "
-	print "\t CompareAndSyncFiles -a/-file1 <Input-File-1> -b/--file2 <Input-File-2 to which Input-File-1 will be synced> -f/-field1 <field in file1> -g/-field2 <field in file2> "
-	print "\n\n\t Chosing utility: \n\t\t -c/--copy: CopyMultipleTimes \n\t\t -s/--sync: CompareAndSyncFiles "
+	print "\t CompareAndSyncFiles -a/--file1 <Input-File-1> -b/--file2 <Input-File-2 to which Input-File-1 will be synced> -f/--field1 <field in file1> -g/--field2 <field in file2> "
+	print "\t ValueRelativeToBase -i/--input <Input File> -o/--output <Output File> -n/--numrepeat <NumRepeat> -f/--field1 <field for freq> -g/--field2 <field for base value> -h/--field3 <field for file name> "
+	print "\n\n\t Chosing utility: \n\t\t -c/--copy: CopyMultipleTimes \n\t\t -s/--sync: CompareAndSyncFiles -r/--relative: ValueRelativeToBase "
 	print "\n"
 	sys.exit()
 	
@@ -43,6 +44,95 @@ def CopyMultipleTimes(InputFileName,OutputFileName,NumRepeat):
 		for i in range(NumRepeat):
 			OutputFile.write(CurrLine)
 	OutputFile.close()
+
+def ValueRelativeToBase(InputFileName,OutputFileName,NumRepeat,Field1,Field2,Field3):
+	if(OutputFileName==''):
+		OutputFileName='RelativeVal_'+str(InputFileName)
+		print "\t INFO: Using default output file name: "+str(OutputFileName)
+	if(NumRepeat==''):
+		NumRepeat=3
+		print "\t INFO: Using "+str(NumRepeat)+" as default number of times a line will be repeated "
+	else:
+		if( not ( (NumRepeat==int(NumRepeat)) and (NumRepeat>0) ) ):
+			print "\t NumRepeat: "+str(NumRepeat)+" is illegal!! "
+			sys.exit()
+	
+	InputFile=FileOpen(InputFileName)
+	NumLines=len(InputFile)
+	OutputFile=open(OutputFileName,'w')
+	print "\t Input file has "+str(NumLines)+" number of lines! "		
+	BaseFreq=2600000
+	
+	BaseValue='ACPower'
+	Params=('Frequency','FileName',BaseValue)
+	Fields={}
+	LineOne=InputFile[0]
+	BreakParams=re.split('\t',LineOne)
+	for ParamIdx,CurrParam in enumerate(BreakParams):
+		CurrParam=RemoveWhiteSpace(CurrParam)
+		for CurrNeededParam in Params:
+			if(CurrParam==CurrNeededParam):
+				Fields[CurrParam]=ParamIdx
+				
+	for CurrField in Fields:
+		print "\t Field: "+str(CurrField)+" Idx: "+str(Fields[CurrField])
+
+	LargerFieldNum=-1
+	
+	for CurrField in Fields:
+		if( Fields[CurrField] > LargerFieldNum):
+			LargerFieldNum=Fields[CurrField]
+			print "\t LargerFieldNum: "+str(LargerFieldNum)
+
+	Header=InputFile[0]		
+	del InputFile[0]			
+	
+	RelatedFiles={}
+	ValuesForFiles={}
+	
+	for LineNum,CurrLine in enumerate(InputFile):
+		BreakParams=re.split('\t',CurrLine)
+		if(len(BreakParams)>=(LargerFieldNum+1) ):
+			ValuesForFiles={}
+			Freq=int(RemoveWhiteSpace(BreakParams[Fields['Frequency']]))
+			VBaseValue=float(RemoveWhiteSpace(BreakParams[Fields[BaseValue]]))
+			FileName=RemoveWhiteSpace(BreakParams[Fields['FileName']])		
+			print "\t Freq: "+str(Freq)+" BaseValue: "+str(VBaseValue)
+			ValuesForFiles['Frequency']=Freq
+			ValuesForFiles[BaseValue]=VBaseValue
+			ValuesForFiles['RestOfLine']=RemoveWhiteSpace(CurrLine)
+			ValuesForFiles['LineNum']=LineNum
+			
+			if( not( FileName in RelatedFiles) ):
+				RelatedFiles[FileName]=[]
+			if(int(Freq)==BaseFreq):
+				RelatedFiles[FileName].insert(0,ValuesForFiles)
+				print "\t ** BaseFreq's values inserted in front "
+			else:
+				RelatedFiles[FileName].append(ValuesForFiles)
+				print "\t Non-BaseFreq's values inserted in front "
+	
+	print "\n"
+	RealignFile={}
+	#Lines
+	for CurrFile in RelatedFiles:
+		print "\t File: "+str(CurrFile)+" found "+str(len(RelatedFiles[CurrFile]))+" such files"
+		FoundBaseFreq=(RelatedFiles[CurrFile][0]['Frequency']==BaseFreq)
+		if(FoundBaseFreq):
+			BaseValueNum=(RelatedFiles[CurrFile][0][BaseValue]) 
+			for CurrValues in (RelatedFiles[CurrFile]):
+				CurrValues['RelativeValue']=( CurrValues[BaseValue] / BaseValueNum)
+				#print "\t Freq: "+str(CurrValues['Frequency'])+" FoundBase: "+str(FoundBaseFreq)+" RelativeValue "+str(CurrValues['RelativeValue'])
+				RealignFile[CurrValues['LineNum']]=CurrValues['RelativeValue']
+
+	OutputFile.write(str(Header)+"\n")		
+	for LineNum,OldLine in enumerate(InputFile):
+		CurrOldLine=RemoveWhiteSpace(OldLine)
+		if( LineNum in RealignFile):
+			#print "\t LineNum: "+str(LineNum)+" "+str(RealignFile[LineNum])
+			OutputFile.write(str(CurrOldLine)+" "+str(RealignFile[LineNum])+"\n")
+	OutputFile.close()
+	
 
 def SyncFiles(CompareFile1Name,CompareFile2Name,Field1,Field2):
 	if(Field1==''):	
@@ -117,8 +207,9 @@ def main(argv):
 	Field2=''
 	Copy=''
 	Sync=''
+	Relative=''
 	try:
-		opts, args = getopt.getopt(sys.argv[1:],"i:n:o:a:b:g:f:c:s:",["input=","numrepeat=","output=","file1=","file2=","field1=","field2=","copy=","sync="])	
+		opts, args = getopt.getopt(sys.argv[1:],"i:n:o:a:b:f:g:h:c:s:r:",["input=","numrepeat=","output=","file1=","file2=","field1=","field2=","field3=","copy=","sync=","relative="])	
 	except getopt.GetoptError:
 		#print str(err) # will print something like "option -a not recognized"
 		usage()
@@ -145,17 +236,24 @@ def main(argv):
 		elif opt in('-g',"--field2"):		
 			Field2=int(RemoveWhiteSpace(arg))
 			print "\t Field2: "+str(Field2)
+		elif opt in('-h',"--field3"):		
+			Field3=int(RemoveWhiteSpace(arg))
+			print "\t Field3: "+str(Field3)			
 		elif opt in ('-c','--copy'):
 			Copy=int(RemoveWhiteSpace(arg))
 			print "\t Copy option is "+str(Copy)
 		elif opt in ('-s','--sync'):
 			Sync=int(RemoveWhiteSpace(arg))
 			print "\t Sync option is "+str(Sync)
+		elif opt in ('-r','--relative'):
+			Relative=int(RemoveWhiteSpace(arg))
+			print "\t Relative option is "+str(Relative)
+
 		else:
 			usage()
-	if( (Copy=='') and (Sync=='') ):
+	if( (Copy=='') and (Sync=='') and (Relative=='') ):
 		usage()
-	print "\t Copy: "+str(Copy)+" Sync "+str(Sync)
+	print "\t Copy: "+str(Copy)+" Sync "+str(Sync)+" Relative "+str(Relative)
 	if( (Copy!='') and (Copy>0) ):
 		print "\t Coming into copy eh? "
 		if(InputFileName==''):
@@ -167,7 +265,14 @@ def main(argv):
 			usage()
 		else:
 			SyncFiles(CompareFile1Name,CompareFile2Name,Field1,Field2)
-
+	if((Relative!='') and (Relative>0)):
+		print "\t Coming into relative "
+		if( (InputFileName=='') or (Field1=='') or (Field2=='') ):
+			usage()
+		else:
+			ValueRelativeToBase(InputFileName,OutputFileName,NumRepeat,Field1,Field2,Field3)	
+		
+		
 	
 
 if __name__=="__main__":
