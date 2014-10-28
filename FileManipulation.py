@@ -1,11 +1,12 @@
+#!/usr/bin/python
 import sys,getopt,subprocess,re,math,commands,time,copy,random
 
 def usage():
 	print "\n\t python FileManipulation.py has following utilities and the respective inputs are displayed along! "
 	print "\t CopyMultipleTimes -i/--input <InputFile> -n/--numrepeat <Number-of-times-a-line-will-be-repeated> -o/--output <Output-file> "
-	print "\t CompareAndSyncFiles -a/--file1 <Input-File-1> -b/--file2 <Input-File-2 to which Input-File-1 will be synced> -f/--field1 <field in file1> -g/--field2 <field in file2> "
-	print "\t ValueRelativeToBase -i/--input <Input File> -o/--output <Output File> -n/--numrepeat <NumRepeat> -f/--field1 <field for freq> -g/--field2 <field for base value> -h/--field3 <field for file name> "
-	print "\n\n\t Chosing utility: \n\t\t -c/--copy: CopyMultipleTimes \n\t\t -s/--sync: CompareAndSyncFiles -r/--relative: ValueRelativeToBase "
+	print "\t CompareAndSyncFiles -a/--file1 <Input-File-1> -b/--file2 <Input-File-2 to which Input-File-1 will be synced> -f/--field1 <field of file 'a' > -g/--field2 <field of file 'b'> "
+	print "\t ValueRelativeToBase -i/--input <Input File> -o/--output <Output File> \n\t\t Method expects first line to have a header and is currently looking for three parameters. "
+	print "\n\n\t Chosing utility: \n\t\t -c/--copy: CopyMultipleTimes \n\t\t -s/--sync: CompareAndSyncFiles -r/--relative: ValueRelativeToBase -r/--relative: ValueRelativeToBase "
 	print "\n"
 	sys.exit()
 	
@@ -17,9 +18,16 @@ def RemoveWhiteSpace(Input):
 
 def FileOpen(FileName,options=''):
 	if(options==''):
-		FileHandle=open(FileName)
+		try:
+			FileHandle=open(FileName)
+		except IOError:
+		 	print 'cannot open', FileName
 	else:
-		FileHandle=open(FileName,options)
+		try:
+			FileHandle=open(FileName,options)
+		except IOError:
+			print 'cannot open', FileName
+			
 	FileContents=FileHandle.readlines()
 	FileHandle.close()
 	return FileContents		
@@ -45,17 +53,10 @@ def CopyMultipleTimes(InputFileName,OutputFileName,NumRepeat):
 			OutputFile.write(CurrLine)
 	OutputFile.close()
 
-def ValueRelativeToBase(InputFileName,OutputFileName,NumRepeat,Field1,Field2,Field3):
+def ValueRelativeToBase(InputFileName,OutputFileName):
 	if(OutputFileName==''):
 		OutputFileName='RelativeVal_'+str(InputFileName)
 		print "\t INFO: Using default output file name: "+str(OutputFileName)
-	if(NumRepeat==''):
-		NumRepeat=3
-		print "\t INFO: Using "+str(NumRepeat)+" as default number of times a line will be repeated "
-	else:
-		if( not ( (NumRepeat==int(NumRepeat)) and (NumRepeat>0) ) ):
-			print "\t NumRepeat: "+str(NumRepeat)+" is illegal!! "
-			sys.exit()
 	
 	InputFile=FileOpen(InputFileName)
 	NumLines=len(InputFile)
@@ -63,7 +64,7 @@ def ValueRelativeToBase(InputFileName,OutputFileName,NumRepeat,Field1,Field2,Fie
 	print "\t Input file has "+str(NumLines)+" number of lines! "		
 	BaseFreq=2600000
 	
-	BaseValue='ACPower'
+	BaseValue='ACPOWER' #'Runtime'
 	Params=('Frequency','FileName',BaseValue)
 	Fields={}
 	LineOne=InputFile[0]
@@ -89,12 +90,11 @@ def ValueRelativeToBase(InputFileName,OutputFileName,NumRepeat,Field1,Field2,Fie
 	
 	RelatedFiles={}
 	ValuesForFiles={}
-	
 	for LineNum,CurrLine in enumerate(InputFile):
 		BreakParams=re.split('\t',CurrLine)
 		if(len(BreakParams)>=(LargerFieldNum+1) ):
 			ValuesForFiles={}
-			Freq=int(RemoveWhiteSpace(BreakParams[Fields['Frequency']]))
+			Freq=float(RemoveWhiteSpace(BreakParams[Fields['Frequency']])) #int(RemoveWhiteSpace(BreakParams[Fields['Frequency']]))
 			VBaseValue=float(RemoveWhiteSpace(BreakParams[Fields[BaseValue]]))
 			FileName=RemoveWhiteSpace(BreakParams[Fields['FileName']])		
 			print "\t Freq: "+str(Freq)+" BaseValue: "+str(VBaseValue)
@@ -105,13 +105,15 @@ def ValueRelativeToBase(InputFileName,OutputFileName,NumRepeat,Field1,Field2,Fie
 			
 			if( not( FileName in RelatedFiles) ):
 				RelatedFiles[FileName]=[]
-			if(int(Freq)==BaseFreq):
+			#if(int(Freq)==BaseFreq):
+			if(float(Freq)==BaseFreq):
 				RelatedFiles[FileName].insert(0,ValuesForFiles)
 				print "\t ** BaseFreq's values inserted in front "
 			else:
 				RelatedFiles[FileName].append(ValuesForFiles)
 				print "\t Non-BaseFreq's values inserted in front "
-	
+		#else:
+		#	print "\t Nodappa illi yeno problem ide: "+str(CurrLine)
 	print "\n"
 	RealignFile={}
 	#Lines
@@ -130,9 +132,8 @@ def ValueRelativeToBase(InputFileName,OutputFileName,NumRepeat,Field1,Field2,Fie
 		CurrOldLine=RemoveWhiteSpace(OldLine)
 		if( LineNum in RealignFile):
 			#print "\t LineNum: "+str(LineNum)+" "+str(RealignFile[LineNum])
-			OutputFile.write(str(CurrOldLine)+" "+str(RealignFile[LineNum])+"\n")
+			OutputFile.write(" "+str(CurrOldLine)+"\t"+str(RealignFile[LineNum])+"\n")
 	OutputFile.close()
-	
 
 def SyncFiles(CompareFile1Name,CompareFile2Name,Field1,Field2):
 	if(Field1==''):	
@@ -188,7 +189,7 @@ def SyncFiles(CompareFile1Name,CompareFile2Name,Field1,Field2):
 		CurrField2=RemoveWhiteSpace(AllFieldsFile2[Field2])
 		if(CurrField1!=CurrField2):
 			print "\t Should Yank line num: "+str(LineNum+1)+" from file-1"
-			print "\t "+str(LineNum)+" "+str(CurrField1)+" "+str(CurrField2)
+			print "\t "+str(LineNum)+" "+str(CurrField1)+"++"+str(CurrField2)+"--"
 			File2AdjustLineNum+=1
 			#sys.exit()
 		else:
@@ -267,10 +268,10 @@ def main(argv):
 			SyncFiles(CompareFile1Name,CompareFile2Name,Field1,Field2)
 	if((Relative!='') and (Relative>0)):
 		print "\t Coming into relative "
-		if( (InputFileName=='') or (Field1=='') or (Field2=='') ):
+		if( (InputFileName=='') ):
 			usage()
 		else:
-			ValueRelativeToBase(InputFileName,OutputFileName,NumRepeat,Field1,Field2,Field3)	
+			ValueRelativeToBase(InputFileName,OutputFileName)
 		
 		
 	
