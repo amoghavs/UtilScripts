@@ -188,10 +188,10 @@ def main(argv):
 									for Curr in range(NumOperands):
 										if(Curr>0):
 											ReconstructExprn+=' | '
-										Term='( Var'+str(VarNum)+'_Stream0_Operand0[ RandomVar'+str(VarNum)+' + ( OpDiffVar'+str(VarNum)+' * '+str(Curr)+') ] )'
+										Term='( Var'+str(VarNum)+'_Stream0_Operand0[ RandomVar'+str(VarNum)+'_Stream0 + ( OpDiffVar'+str(VarNum)+' * '+str(Curr)+') ] )'
 										#print "\t Term: "+str(Term)
 										ReconstructExprn+=str(Term)
-									ReconstructExprn+=' ) '
+									ReconstructExprn+=' ) ;'
 									NewFile[CurrTuple[1]]=ReconstructExprn
 								#print "\t ReconstructExprn: "+str(ReconstructExprn)
 			#print "\n\t HitRateControlParam: "+str(THitRateControlParam)+"---"
@@ -220,7 +220,7 @@ def main(argv):
 				if(len(ExtractLHS)>=2):
 					ReconstructLine=ExtractLHS[0]+' = '+str(NumOperands)+';\n'
 					print "\t 3. ReconstructLine: "+str(ReconstructLine)
-					NewFile[CurrEle[1]]=ReconstructLine
+					NewFile[CurrTuple[1]]=ReconstructLine
 			#print "\t FindNumOperands: "+str(FindNumOperandsVar)
 			WriteNewFile=open(NewFileName,'w')
 			print "\t Rewriting file: "+str(NewFileName)
